@@ -7,7 +7,6 @@ import logging
 logging.basicConfig(level=logging.INFO, filename='proalpha_conversion.log',
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-
 class ProAlphaToListLabelConverter:
     """Converts proALPHA Internal templates to List & Label .lst format"""
 
@@ -33,8 +32,15 @@ class ProAlphaToListLabelConverter:
             tree = ET.parse(xml_file_path)
             root = tree.getroot()
 
+            # Find FORM element under DOCUMENT
+            form = root.find('.//FORM')
+            if form is None:
+                raise ValueError(f"No <FORM> element found in {xml_file_path}")
+
             # Parse template
-            layout = self.parse_proalpha_template(root)
+            layout = self.parse_proalpha_template(form)
+            if not layout['metadata'] and not layout['fields'] and not layout['text']:
+                raise ValueError(f"No valid data parsed from {xml_file_path}")
 
             # Create List & Label XML
             output_path = self.create_list_label_xml(layout, xml_file_path, output_path)
@@ -42,16 +48,19 @@ class ProAlphaToListLabelConverter:
             logging.info(f"Converted {xml_file_path} to {output_path}")
             return output_path
 
+        except ET.ParseError as e:
+            logging.error(f"XML parsing error in {xml_file_path}: {str(e)}")
+            raise Exception(f"Failed to parse XML in {xml_file_path}: {str(e)}")
         except Exception as e:
             logging.error(f"Error converting {xml_file_path}: {str(e)}")
             raise Exception(f"Error converting XML to List & Label: {str(e)}")
 
-    def parse_proalpha_template(self, root: ET.Element) -> Dict[str, Any]:
-        """Parse proALPHA Internal template XML to extract metadata, fields, and text"""
+    def parse_proalpha_template(self, form: ET.Element) -> Dict[str, Any]:
+        """Parse proALPHA Internal template FORM element to extract metadata, fields, and text"""
         layout = {'metadata': {}, 'fields': [], 'text': []}
 
         # Extract metadata from INFO elements
-        for info in root.findall('.//INFO'):
+        for info in form.findall('.//INFO'):
             metadata = {
                 '@ID': info.get('ID', ''),
                 'FORMNO': info.find('FORMNO').text if info.find('FORMNO') is not None else '',
@@ -64,10 +73,11 @@ class ProAlphaToListLabelConverter:
                 'OP': info.find('OP').text if info.find('OP') is not None else ''
             }
             layout['metadata'][metadata['@ID']] = metadata
+            logging.debug(f"Parsed INFO: {metadata}")
 
         # Extract FIELDOBJECT elements
-        for field in root.findall('.//FIELDOBJECT'):
-            layout['fields'].append({
+        for field in form.findall('.//FIELDOBJECT'):
+            field_data = {
                 '@ID': field.get('ID', ''),
                 'POSNO': field.get('POSNO', ''),
                 'PARENT': field.get('PARENT', ''),
@@ -81,17 +91,22 @@ class ProAlphaToListLabelConverter:
                 'FORMNO': field.get('FORMNO', ''),
                 'VARIABLE': field.get('VARIABLE', ''),
                 'TYPE': field.get('TYPE', '')
-            })
+            }
+            layout['fields'].append(field_data)
+            logging.debug(f"Parsed FIELDOBJECT: {field_data}")
 
         # Extract FIELDTEXT elements
-        for text in root.findall('.//FIELDTEXT'):
-            layout['text'].append({
+        for text in form.findall('.//FIELDTEXT'):
+            text_data = {
                 '@ID': text.get('ID', ''),
                 'VARIABLE': text.get('VARIABLE', ''),
                 'FORMNO': text.get('FORMNO', ''),
                 'VARIANT': text.get('VARIANT', '')
-            })
+            }
+            layout['text'].append(text_data)
+            logging.debug(f"Parsed FIELDTEXT: {text_data}")
 
+        logging.info(f"Parsed template: {len(layout['metadata'])} INFO, {len(layout['fields'])} FIELDOBJECT, {len(layout['text'])} FIELDTEXT")
         return layout
 
     def create_list_label_xml(self, layout: Dict[str, Any], input_path: str, output_path: str = None) -> str:
@@ -127,8 +142,7 @@ class ProAlphaToListLabelConverter:
                     text_elem.set("VARIABLE", text['VARIABLE'])
                     text_elem.set("FORMNO", text['FORMNO'])
                     text_elem.set("VARIANT", text['VARIANT'])
-                    text_elem.set("FONT",
-                                  layout['metadata'].get(list(layout['metadata'].keys())[0], {}).get('FONT', 'Arial'))
+                    text_elem.set("FONT", layout['metadata'].get(list(layout['metadata'].keys())[0], {}).get('FONT', 'Arial'))
                     text_elem.set("FONTSIZE", "10")  # Default font size
                     text_elem.set("ALIGNMENT", "Left")  # Default alignment
 
@@ -143,9 +157,7 @@ class ProAlphaToListLabelConverter:
                             text_elem.set("VARIABLE", header.strip())
                             text_elem.set("FORMNO", text['FORMNO'])
                             text_elem.set("VARIANT", "C")
-                            text_elem.set("FONT",
-                                          layout['metadata'].get(list(layout['metadata'].keys())[0], {}).get('FONT',
-                                                                                                             'Arial'))
+                            text_elem.set("FONT", layout['metadata'].get(list(layout['metadata'].keys())[0], {}).get('FONT', 'Arial'))
                             text_elem.set("FONTSIZE", "10")
                             text_elem.set("ALIGNMENT", "Left")
 
@@ -156,6 +168,7 @@ class ProAlphaToListLabelConverter:
             # Write to .lst file
             tree = ET.ElementTree(root)
             tree.write(output_path, encoding='utf-8', xml_declaration=True)
+            logging.info(f"Created List & Label XML: {output_path}")
             return output_path
 
         except Exception as e:
@@ -186,7 +199,6 @@ class ProAlphaToListLabelConverter:
         self.attribute_prefix = attribute_prefix
         self.text_key = text_key
         self.list_tags = list_tags or ["INFO", "FIELDOBJECT", "FIELDTEXT"]
-
 
 def convert(input_files: List[str], output_dir: str = None, **options) -> List[str]:
     """
@@ -233,7 +245,6 @@ def convert(input_files: List[str], output_dir: str = None, **options) -> List[s
             print(f"Error converting {input_file}: {str(e)}")
 
     return output_files
-
 
 if __name__ == "__main__":
     # Test the converter
