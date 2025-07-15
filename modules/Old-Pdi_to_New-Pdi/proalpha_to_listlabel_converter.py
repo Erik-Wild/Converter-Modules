@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import os
 from typing import List, Dict, Any, Optional
 import logging
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename='proalpha_conversion.log',
@@ -32,15 +33,24 @@ class ProAlphaToListLabelConverter:
             tree = ET.parse(xml_file_path)
             root = tree.getroot()
 
-            # Find FORM element under DOCUMENT
-            form = root.find('.//FORM')
-            if form is None:
-                raise ValueError(f"No <FORM> element found in {xml_file_path}")
+            # Extract variant and formno from filename if possible
+            filename = os.path.basename(xml_file_path)
+            variant = 'UNKNOWN'
+            formno_str = '00'
+            if '$' in filename:
+                parts = re.split(r'\$', filename)
+                if len(parts) >= 3:
+                    variant = parts[1]
+                    formno_str = parts[2].split('_')[0]
 
             # Parse template
-            layout = self.parse_proalpha_template(form)
+            layout = self.parse_proalpha_template(root)
             if not layout['metadata'] and not layout['fields'] and not layout['text']:
                 raise ValueError(f"No valid data parsed from {xml_file_path}")
+
+            # Override formno if parsed, add variant
+            if 'main' in layout['metadata']:
+                layout['metadata']['main']['VARIANT'] = variant.upper()
 
             # Create List & Label XML
             output_path = self.create_list_label_xml(layout, xml_file_path, output_path)
@@ -55,58 +65,69 @@ class ProAlphaToListLabelConverter:
             logging.error(f"Error converting {xml_file_path}: {str(e)}")
             raise Exception(f"Error converting XML to List & Label: {str(e)}")
 
-    def parse_proalpha_template(self, form: ET.Element) -> Dict[str, Any]:
-        """Parse proALPHA Internal template FORM element to extract metadata, fields, and text"""
+    def parse_proalpha_template(self, root: ET.Element) -> Dict[str, Any]:
+        """Parse proALPHA Internal template to extract metadata, fields, and text"""
         layout = {'metadata': {}, 'fields': [], 'text': []}
 
-        # Extract metadata from INFO elements
-        for info in form.findall('.//INFO'):
-            metadata = {
-                '@ID': info.get('ID', ''),
-                'FORMNO': info.find('FORMNO').text if info.find('FORMNO') is not None else '',
-                'VARIANT': info.find('VARIANT').text if info.find('VARIANT') is not None else '',
-                'TITLE': info.find('TITLE').text if info.find('TITLE') is not None else '',
-                'FONT': info.find('FONT').text if info.find('FONT') is not None else 'Arial',
-                'FIELDNAME': info.find('FIELDNAME').text if info.find('FIELDNAME') is not None else '',
-                'POSNO': info.find('POSNO').text if info.find('POSNO') is not None else '',
-                'ISOUTPUT': info.find('ISOUTPUT').text if info.find('ISOUTPUT') is not None else 'false',
-                'OP': info.find('OP').text if info.find('OP') is not None else ''
-            }
-            layout['metadata'][metadata['@ID']] = metadata
-            logging.debug(f"Parsed INFO: {metadata}")
+        for elem in root.iter():
+            tag = elem.tag
+            lines = [l.strip() for l in (elem.text or '').split('\n') if l.strip()]
 
-        # Extract FIELDOBJECT elements
-        for field in form.findall('.//FIELDOBJECT'):
-            field_data = {
-                '@ID': field.get('ID', ''),
-                'POSNO': field.get('POSNO', ''),
-                'PARENT': field.get('PARENT', ''),
-                'GROUP': field.get('GROUP', ''),
-                'MASK': field.get('MASK', ''),
-                'LENGTH': field.get('LENGTH', ''),
-                'ISOUTPUT': field.get('ISOUTPUT', 'false'),
-                'ISMANDATORY': field.get('ISMANDATORY', 'false'),
-                'ISACTIVE': field.get('ISACTIVE', 'true'),
-                'FIELDNAME': field.get('FIELDNAME', ''),
-                'FORMNO': field.get('FORMNO', ''),
-                'VARIABLE': field.get('VARIABLE', ''),
-                'TYPE': field.get('TYPE', '')
-            }
-            layout['fields'].append(field_data)
-            logging.debug(f"Parsed FIELDOBJECT: {field_data}")
+            if tag.startswith('PA2087::'):
+                if len(lines) >= 8:
+                    # Main metadata
+                    formno = lines[0]
+                    font = lines[5] if len(lines) > 5 else 'cour7'
+                    orientation = lines[6] if len(lines) > 6 else 'P'
+                    opsys = lines[7] if len(lines) > 7 else '$OpSys'
+                    layout['metadata']['main'] = {
+                        'FORMNO': formno,
+                        'FONT': font,
+                        'ORIENTATION': orientation,
+                        'OP': opsys,
+                        'TITLE': 'Converted from proALPHA',
+                        'ISOUTPUT': 'false',
+                        'POSNO': '',
+                        'FIELDNAME': '',
+                        '@ID': 'main'
+                    }
+                    logging.debug(f"Parsed metadata: {layout['metadata']['main']}")
 
-        # Extract FIELDTEXT elements
-        for text in form.findall('.//FIELDTEXT'):
-            text_data = {
-                '@ID': text.get('ID', ''),
-                'VARIABLE': text.get('VARIABLE', ''),
-                'FORMNO': text.get('FORMNO', ''),
-                'VARIANT': text.get('VARIANT', '')
-            }
-            layout['text'].append(text_data)
-            logging.debug(f"Parsed FIELDTEXT: {text_data}")
+            elif tag.startswith('PA2090'):
+                if lines:
+                    if len(lines) <= 5:  # Text/header
+                        text_value = lines[0] if len(lines) > 0 else ''
+                        formno = lines[1] if len(lines) > 1 else ''
+                        var = lines[2] if len(lines) > 2 else ''
+                        if var in ['C', 'D']:
+                            text = {
+                                '@ID': elem.tag,
+                                'VARIABLE': text_value,
+                                'FORMNO': formno,
+                                'VARIANT': var
+                            }
+                            layout['text'].append(text)
+                            logging.debug(f"Parsed text: {text}")
+                    else:  # Field
+                        field = {
+                            '@ID': elem.tag,
+                            'POSNO': lines[0] if len(lines) > 0 else '',
+                            'PARENT': lines[1] if len(lines) > 1 else '',
+                            'GROUP': lines[2] if len(lines) > 2 else '',
+                            'TYPE': lines[3] if len(lines) > 3 else '',
+                            'MASK': lines[5] if len(lines) > 5 else '',
+                            'LENGTH': lines[6] if len(lines) > 6 else '',
+                            'ISOUTPUT': lines[7] if len(lines) > 7 else 'false',
+                            'ISMANDATORY': lines[8] if len(lines) > 8 else 'false',
+                            'ISACTIVE': lines[9] if len(lines) > 9 else 'true',
+                            'VARIABLE': lines[10] if len(lines) > 10 else '',
+                            'FIELDNAME': lines[12] if len(lines) > 12 else '',
+                            'FORMNO': lines[13] if len(lines) > 13 else ''
+                        }
+                        layout['fields'].append(field)
+                        logging.debug(f"Parsed field: {field}")
 
-        logging.info(f"Parsed template: {len(layout['metadata'])} INFO, {len(layout['fields'])} FIELDOBJECT, {len(layout['text'])} FIELDTEXT")
+        logging.info(f"Parsed template: {len(layout['metadata'])} metadata, {len(layout['fields'])} fields, {len(layout['text'])} text")
         return layout
 
     def create_list_label_xml(self, layout: Dict[str, Any], input_path: str, output_path: str = None) -> str:
@@ -119,46 +140,48 @@ class ProAlphaToListLabelConverter:
             # Add INFO elements from metadata
             for metadata_id, metadata in layout['metadata'].items():
                 info = ET.SubElement(root, "INFO")
-                info.set("ID", metadata_id)
+                info.set("ID", metadata.get('@ID', metadata_id))
                 for key, value in metadata.items():
                     if not key.startswith('@') and value:
-                        ET.SubElement(info, key).text = value
+                        ET.SubElement(info, key).text = str(value)
 
             # Add FIELDOBJECT elements
             for field in layout['fields']:
                 field_elem = ET.SubElement(root, "FIELDOBJECT")
                 for key, value in field.items():
                     if value:
-                        field_elem.set(key[1:] if key.startswith('@') else key, value)
+                        field_elem.set(key[1:] if key.startswith('@') else key, str(value))
                 # Set List & Label-specific attributes
-                field_elem.set("TYPE", self.infer_field_type(field['MASK']))
-                field_elem.set("NAME", field['FIELDNAME'] or f"Field_{field['POSNO']}")
+                field_elem.set("TYPE", self.infer_field_type(field.get('MASK', '')))
+                field_elem.set("NAME", field.get('FIELDNAME') or f"Field_{field.get('POSNO', '0')}")
 
             # Add FIELDTEXT elements for headers
+            font = layout['metadata'].get('main', {}).get('FONT', 'Arial')
+            fontsize = '7' if 'cour' in font.lower() else '10'
             for text in layout['text']:
-                if text['VARIANT'] == 'C':  # Column headers
+                if text.get('VARIANT') == 'C':  # Column headers
                     text_elem = ET.SubElement(root, "FIELDTEXT")
-                    text_elem.set("ID", text['@ID'])
-                    text_elem.set("VARIABLE", text['VARIABLE'])
-                    text_elem.set("FORMNO", text['FORMNO'])
-                    text_elem.set("VARIANT", text['VARIANT'])
-                    text_elem.set("FONT", layout['metadata'].get(list(layout['metadata'].keys())[0], {}).get('FONT', 'Arial'))
-                    text_elem.set("FONTSIZE", "10")  # Default font size
+                    text_elem.set("ID", text.get('@ID', ''))
+                    text_elem.set("VARIABLE", text.get('VARIABLE', ''))
+                    text_elem.set("FORMNO", text.get('FORMNO', ''))
+                    text_elem.set("VARIANT", text.get('VARIANT', ''))
+                    text_elem.set("FONT", font)
+                    text_elem.set("FONTSIZE", fontsize)
                     text_elem.set("ALIGNMENT", "Left")  # Default alignment
 
             # Handle semicolon-separated headers (e.g., in 22_P_3)
             for text in layout['text']:
-                if text['VARIANT'] == 'C' and ';' in text['VARIABLE']:
+                if text.get('VARIANT') == 'C' and ';' in text.get('VARIABLE', ''):
                     headers = text['VARIABLE'].split(';')
                     for i, header in enumerate(headers):
                         if header.strip():
                             text_elem = ET.SubElement(root, "FIELDTEXT")
-                            text_elem.set("ID", f"{text['@ID']}_{i}")
+                            text_elem.set("ID", f"{text.get('@ID', '')}_{i}")
                             text_elem.set("VARIABLE", header.strip())
-                            text_elem.set("FORMNO", text['FORMNO'])
+                            text_elem.set("FORMNO", text.get('FORMNO', ''))
                             text_elem.set("VARIANT", "C")
-                            text_elem.set("FONT", layout['metadata'].get(list(layout['metadata'].keys())[0], {}).get('FONT', 'Arial'))
-                            text_elem.set("FONTSIZE", "10")
+                            text_elem.set("FONT", font)
+                            text_elem.set("FONTSIZE", fontsize)
                             text_elem.set("ALIGNMENT", "Left")
 
             # Determine output path
@@ -180,13 +203,13 @@ class ProAlphaToListLabelConverter:
         if not mask:
             return "String"
         mask = mask.lower()
-        if "99.99.9999" in mask:
+        if "99.99.9999" in mask or "hh:mm" in mask:
             return "Date"
         elif "hh:mm" in mask:
             return "Time"
-        elif any(x in mask for x in ["9", ".", ",", "-", ">", "<", "z"]):
+        elif any(char in mask for char in [">", "<", "9", ".", ","]):
             return "Number"
-        elif "x(" in mask:
+        elif "x(" in mask or "z" in mask:
             return "String"
         return "String"  # Default to String
 
