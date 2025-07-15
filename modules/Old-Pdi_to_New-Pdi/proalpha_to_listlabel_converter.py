@@ -73,13 +73,18 @@ class ProAlphaToListLabelConverter:
             tag = elem.tag
             lines = [l.strip() for l in (elem.text or '').split('\n') if l.strip()]
 
-            if tag.startswith('PA2087::'):
+            if tag.startswith('PA2087:'):
                 if len(lines) >= 8:
                     # Main metadata
                     formno = lines[0]
-                    font = lines[5] if len(lines) > 5 else 'cour7'
-                    orientation = lines[6] if len(lines) > 6 else 'P'
-                    opsys = lines[7] if len(lines) > 7 else '$OpSys'
+                    # lines[1] is PA0037...
+                    # lines[2] is usually ''
+                    # lines[3] is '1'
+                    # lines[4] is size like '131'
+                    # lines[5] is 'false'
+                    font = lines[6] if len(lines) > 6 else 'cour7'
+                    orientation = lines[7] if len(lines) > 7 else 'P'
+                    opsys = lines[8] if len(lines) > 8 else '$OpSys'
                     layout['metadata']['main'] = {
                         'FORMNO': formno,
                         'FONT': font,
@@ -93,7 +98,7 @@ class ProAlphaToListLabelConverter:
                     }
                     logging.debug(f"Parsed metadata: {layout['metadata']['main']}")
 
-            elif tag.startswith('PA2090'):
+            if tag.startswith('PA2090:'):
                 if lines:
                     if len(lines) <= 5:  # Text/header
                         text_value = lines[0] if len(lines) > 0 else ''
