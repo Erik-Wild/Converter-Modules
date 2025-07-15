@@ -1,5 +1,5 @@
 name=ProAlpha to List & Label Converter
-version=1.0.0
+version=1.4.0
 description=Converts proALPHA Internal templates (.pdi) to List & Label (.lst) format for list-based reports. Supports field mappings, text headers, and diverse data types, integrating with proALPHA's data provider services.
 author=ErikRadoan
 entry_point=proalpha_to_listlabel_converter.py

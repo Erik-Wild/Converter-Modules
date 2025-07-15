@@ -3,6 +3,7 @@ import os
 from typing import List, Dict, Any, Optional
 import logging
 import re
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename='proalpha_conversion.log',
@@ -52,6 +53,8 @@ class ProAlphaToListLabelConverter:
             if 'main' in layout['metadata']:
                 layout['metadata']['main']['VARIANT'] = variant.upper()
 
+            logging.info(f"Extracted layout: {json.dumps(layout, indent=2)}")
+
             # Create List & Label XML
             output_path = self.create_list_label_xml(layout, xml_file_path, output_path)
 
@@ -71,20 +74,16 @@ class ProAlphaToListLabelConverter:
 
         for elem in root.iter():
             tag = elem.tag
-            lines = [l.strip() for l in (elem.text or '').split('\n') if l.strip()]
+            lines = [l.strip() for l in (elem.text or '').splitlines() if l.strip()]
+            logging.debug(f"Parsing tag: {tag}, lines: {lines}")
 
-            if tag.startswith('PA2087:'):
-                if len(lines) >= 8:
+            if tag.startswith('PA2087::'):
+                if len(lines) >= 9:
                     # Main metadata
                     formno = lines[0]
-                    # lines[1] is PA0037...
-                    # lines[2] is usually ''
-                    # lines[3] is '1'
-                    # lines[4] is size like '131'
-                    # lines[5] is 'false'
-                    font = lines[6] if len(lines) > 6 else 'cour7'
-                    orientation = lines[7] if len(lines) > 7 else 'P'
-                    opsys = lines[8] if len(lines) > 8 else '$OpSys'
+                    font = lines[6]
+                    orientation = lines[7]
+                    opsys = lines[8]
                     layout['metadata']['main'] = {
                         'FORMNO': formno,
                         'FONT': font,
@@ -98,13 +97,14 @@ class ProAlphaToListLabelConverter:
                     }
                     logging.debug(f"Parsed metadata: {layout['metadata']['main']}")
 
-            if tag.startswith('PA2090:'):
+            elif tag.startswith('PA2090:'):
                 if lines:
-                    if len(lines) <= 5:  # Text/header
+                    if len(lines) <= 5:
+                        # Text/header
                         text_value = lines[0] if len(lines) > 0 else ''
                         formno = lines[1] if len(lines) > 1 else ''
                         var = lines[2] if len(lines) > 2 else ''
-                        if var in ['C', 'D']:
+                        if var in ['C', 'D'] and text_value.strip():
                             text = {
                                 '@ID': elem.tag,
                                 'VARIABLE': text_value,
@@ -113,7 +113,8 @@ class ProAlphaToListLabelConverter:
                             }
                             layout['text'].append(text)
                             logging.debug(f"Parsed text: {text}")
-                    else:  # Field
+                    else:
+                        # Field
                         field = {
                             '@ID': elem.tag,
                             'POSNO': lines[0] if len(lines) > 0 else '',
@@ -279,7 +280,8 @@ if __name__ == "__main__":
     test_files = [
         "reportlayouts_$vuusta$21_P_4.pdi",
         "reportlayouts_$vuusta$100_P_2.pdi",
-        "reportlayouts_$vuusta$22_P_3.pdi"
+        "reportlayouts_$vuusta$22_P_3.pdi",
+        "reportlayouts_$vuusta$110_P.pdi"
     ]
     results = convert(test_files, output_dir="converted_templates")
     print(f"Converted files: {results}")
