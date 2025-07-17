@@ -1,133 +1,121 @@
 import json
-import xml.etree.ElementTree as ET
-from typing import Dict, Any, List, Optional
+import re
+from typing import List, Dict, Any
 
-
-class XMLToJsonConverter:
-    """Converts XML files to JSON format"""
+class PDIToJsonConverter:
+    """Converts PDI files to JSON format"""
 
     def __init__(self):
-        self.preserve_attributes = True
-        self.attribute_prefix = "@"
-        self.text_key = "#text"
-        self.list_tags = []  # Tags that should always be arrays
+        pass  # No specific options needed for now
 
-    def convert_file(self, xml_file_path: str, output_path: str = None) -> str:
+    def convert_file(self, pdi_file_path: str, output_path: str = None) -> str:
         """
-        Convert XML file to JSON
+        Convert PDI file to JSON
 
         Args:
-            xml_file_path: Path to input XML file
+            pdi_file_path: Path to input PDI file
             output_path: Path for output JSON file (optional)
 
         Returns:
             Path to generated JSON file
         """
         try:
-            # Parse XML
-            tree = ET.parse(xml_file_path)
-            root = tree.getroot()
+            # Read PDI content
+            with open(pdi_file_path, 'r', encoding='utf-8') as f:
+                input_text = f.read()
 
-            # Convert to dictionary
-            json_data = self.xml_to_dict(root)
+            # Parse to data
+            json_data = self.parse_pdi(input_text)
 
             # Determine output path
             if not output_path:
-                output_path = xml_file_path.rsplit('.', 1)[0] + '.json'
+                output_path = pdi_file_path.rsplit('.', 1)[0] + '.json'
 
             # Write JSON file
             with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(json_data, f, indent=2, ensure_ascii=False)
+                json.dump(json_data, f, indent=4, ensure_ascii=False)
 
             return output_path
 
         except Exception as e:
-            raise Exception(f"Error converting XML to JSON: {str(e)}")
+            raise Exception(f"Error converting PDI to JSON: {str(e)}")
 
-    def xml_to_dict(self, element: ET.Element) -> Dict[str, Any]:
-        """Convert XML element to dictionary"""
-        result = {}
-
-        # Handle attributes
-        if self.preserve_attributes and element.attrib:
-            for key, value in element.attrib.items():
-                result[f"{self.attribute_prefix}{key}"] = value
-
-        # Handle text content
-        if element.text and element.text.strip():
-            if len(element) == 0:  # Leaf node with text
-                if result:  # Has attributes
-                    result[self.text_key] = element.text.strip()
-                else:  # Just text
-                    return element.text.strip()
-            else:  # Has children and text
-                result[self.text_key] = element.text.strip()
-
-        # Handle child elements
-        child_dict = {}
-        for child in element:
-            child_data = self.xml_to_dict(child)
-
-            if child.tag in child_dict:
-                # Convert to list if multiple children with same tag
-                if not isinstance(child_dict[child.tag], list):
-                    child_dict[child.tag] = [child_dict[child.tag]]
-                child_dict[child.tag].append(child_data)
-            else:
-                # Force list for specified tags
-                if child.tag in self.list_tags:
-                    child_dict[child.tag] = [child_data]
+    def parse_pdi(self, text: str) -> List[Dict[str, Any]]:
+        """Parse PDI text to list of documents"""
+        documents = []
+        # Split the text into lines
+        lines = text.split('\n')
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            if line.startswith('<DOCUMENT filename='):
+                # Extract filename
+                match = re.search(r'<DOCUMENT filename="([^"]+)"', line)
+                if match:
+                    filename = match.group(1)
                 else:
-                    child_dict[child.tag] = child_data
-
-        result.update(child_dict)
-
-        # If only one key and it's not an attribute or text, return the value directly
-        if len(result) == 1 and not any(
-                k.startswith(self.attribute_prefix) for k in result.keys()) and self.text_key not in result:
-            return list(result.values())[0]
-
-        return result
-
-    def set_options(self, preserve_attributes: bool = True,
-                    attribute_prefix: str = "@",
-                    text_key: str = "#text",
-                    list_tags: List[str] = None):
-        """Configure conversion options"""
-        self.preserve_attributes = preserve_attributes
-        self.attribute_prefix = attribute_prefix
-        self.text_key = text_key
-        self.list_tags = list_tags or []
-
+                    i += 1
+                    continue
+                content_lines = []
+                i += 1
+                # Collect lines until </DOCUMENT>
+                while i < len(lines) and not lines[i].strip().startswith('</DOCUMENT>'):
+                    content_lines.append(lines[i])
+                    i += 1
+                # Parse the content lines into entries
+                entries = []
+                j = 0
+                while j < len(content_lines):
+                    cl = content_lines[j].strip()
+                    if cl.startswith('PA'):
+                        # Extract type and id
+                        parts = cl.split('::', 1)
+                        entry_type = parts[0]
+                        entry_id = parts[1] if len(parts) > 1 else ''
+                        params = []
+                        j += 1
+                        # Collect subsequent params until next PA or end
+                        while j < len(content_lines) and not content_lines[j].strip().startswith('PA'):
+                            param = content_lines[j].strip()
+                            if param:  # Skip empty params
+                                params.append(param)
+                            j += 1
+                        entries.append({
+                            'type': entry_type,
+                            'id': entry_id,
+                            'params': params
+                        })
+                    else:
+                        j += 1
+                documents.append({
+                    'filename': filename,
+                    'entries': entries
+                })
+            else:
+                i += 1
+        return documents
 
 def convert(input_files: List[str], output_dir: str = None, **options) -> List[str]:
     """
     Main conversion function for the module system
 
     Args:
-        input_files: List of XML file paths to convert
+        input_files: List of PDI file paths to convert
         output_dir: Directory for output files
-        **options: Conversion options
+        **options: Conversion options (currently none)
 
     Returns:
         List of generated JSON file paths
     """
-    converter = XMLToJsonConverter()
+    converter = PDIToJsonConverter()
 
-    # Apply options
-    if options:
-        converter.set_options(
-            preserve_attributes=options.get('preserve_attributes', True),
-            attribute_prefix=options.get('attribute_prefix', '@'),
-            text_key=options.get('text_key', '#text'),
-            list_tags=options.get('list_tags', [])
-        )
+    # No options to set for now
 
     output_files = []
 
     for input_file in input_files:
         try:
-            if not input_file.lower().endswith(('.xml', '.pdi')):
+            if not input_file.lower().endswith('.pdi'):
                 continue
 
             if output_dir:
@@ -144,10 +132,3 @@ def convert(input_files: List[str], output_dir: str = None, **options) -> List[s
             print(f"Error converting {input_file}: {str(e)}")
 
     return output_files
-
-
-if __name__ == "__main__":
-    # Test the converter
-    test_files = ["test.xml"]
-    results = convert(test_files)
-    print(f"Converted files: {results}")
