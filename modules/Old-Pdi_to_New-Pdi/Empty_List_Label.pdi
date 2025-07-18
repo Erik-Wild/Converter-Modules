@@ -1,0 +1,498 @@
+<?xml version="1.0"?>
+<dsBG_Form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="" xmlns:prodata="urn:schemas-progress-com:xml-prodata:0001">
+    <xsd:element name="dsBG_Form" prodata:proDataSet="true">
+      <xsd:complexType>
+        <xsd:sequence>
+          <xsd:element name="ttBG_FKopf" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBG_FKopf_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Firma" type="xsd:string" nillable="true" prodata:format="x(10)" prodata:columnLabel="Firma"/>
+                <xsd:element name="Formular" type="xsd:string" nillable="true" prodata:format="x(6)" prodata:columnLabel="Fom"/>
+                <xsd:element name="FormularNr" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="Formularnummer" prodata:columnLabel="FN"/>
+                <xsd:element name="Anzahl_Zeilen" type="xsd:int" nillable="true" default="65" prodata:format="zz9" prodata:label="Anzahl Zeilen" prodata:columnLabel="#Zl" prodata:help="Anzahl Druckzeilen"/>
+                <xsd:element name="Anzahl_Spalten" type="xsd:int" nillable="true" default="80" prodata:format="zz9" prodata:label="Anzahl Spalten" prodata:columnLabel="#Spl" prodata:help="Anzahl der Druckspalten"/>
+                <xsd:element name="SteuerSequenzen" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:label="Steuersequenzen" prodata:columnLabel="Steuersequenzen" prodata:help="Liste der zu sendenden symbolischen Steuercodes"/>
+                <xsd:element name="Generatortyp" type="xsd:string" nillable="true" default="P" prodata:format="x" prodata:columnLabel="GT"/>
+                <xsd:element name="CodePage" type="xsd:string" nillable="true" default="$OpSys" prodata:format="x(12)" prodata:label="Codepage" prodata:columnLabel="Codepage"/>
+                <xsd:element name="BG_FKopf_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BG_FKopf_Obj"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBG_FKopfSpr" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBG_FKopfSpr_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Firma" type="xsd:string" nillable="true" prodata:format="x(10)" prodata:columnLabel="Firma"/>
+                <xsd:element name="Formular" type="xsd:string" nillable="true" prodata:format="x(6)" prodata:columnLabel="Fom"/>
+                <xsd:element name="FormularNr" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="Formularnummer" prodata:columnLabel="FN"/>
+                <xsd:element name="Sprache" type="xsd:string" nillable="true" default="D" prodata:format="x(3)" prodata:columnLabel="Spr"/>
+                <xsd:element name="Bezeichnung" type="xsd:string" nillable="true" prodata:format="x(30)" prodata:columnLabel="Bezeichnung"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBG_FAbschnitt" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBG_FAbschnitt_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Firma" type="xsd:string" nillable="true" prodata:format="x(10)" prodata:columnLabel="Firma"/>
+                <xsd:element name="Formular" type="xsd:string" nillable="true" prodata:format="x(6)" prodata:columnLabel="Fom"/>
+                <xsd:element name="FormularNr" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="Formularnummer" prodata:columnLabel="FN"/>
+                <xsd:element name="Abschnitt" type="xsd:string" nillable="true" prodata:format="x(3)" prodata:columnLabel="Abs"/>
+                <xsd:element name="fruehester_Beginn" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="frühester Beginn" prodata:columnLabel="fB" prodata:help="frühester Beginn in Zeile"/>
+                <xsd:element name="spaetester_Beginn" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="spätester Beginn" prodata:columnLabel="sB" prodata:help="spätester Beginn in Zeile"/>
+                <xsd:element name="spaetestes_Ende" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="spätestes Ende" prodata:columnLabel="sE" prodata:help="spätestes Ende in Zeile"/>
+                <xsd:element name="BG_FAbschnitt_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BG_FAbschnitt_Obj"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBG_FFeld" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBG_FFeld_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Firma" type="xsd:string" nillable="true" prodata:format="x(10)" prodata:columnLabel="Firma"/>
+                <xsd:element name="Formular" type="xsd:string" nillable="true" prodata:format="x(6)" prodata:columnLabel="Fom"/>
+                <xsd:element name="FormularNr" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="Formularnummer" prodata:columnLabel="FN"/>
+                <xsd:element name="Abschnitt" type="xsd:string" nillable="true" prodata:format="x(3)" prodata:columnLabel="Abs"/>
+                <xsd:element name="UnterAbschnitt" type="xsd:string" nillable="true" prodata:format="x(3)" prodata:label="Unterabschnitt" prodata:columnLabel="UAbs"/>
+                <xsd:element name="FeldTyp" type="xsd:string" nillable="true" default="F" prodata:format="x" prodata:label="Feldtyp" prodata:columnLabel="FdT"/>
+                <xsd:element name="TabellenName" type="xsd:string" nillable="true" prodata:format="x(25)" prodata:label="Tabellenname" prodata:columnLabel="Tabellenname"/>
+                <xsd:element name="SpaltenName" type="xsd:string" nillable="true" prodata:format="x(32)" prodata:label="Spaltenname" prodata:columnLabel="Spaltenname"/>
+                <xsd:element name="ZusatzInfo" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:label="Zusatzinfo" prodata:columnLabel="Zusatzinfo"/>
+                <xsd:element name="Zeile" type="xsd:int" nillable="true" default="1" prodata:format="z9" prodata:columnLabel="Ze" prodata:help="relative Druckzeile"/>
+                <xsd:element name="Spalte" type="xsd:int" nillable="true" default="2" prodata:format="zz9" prodata:columnLabel="Spl" prodata:help="Druckspalte"/>
+                <xsd:element name="SteuerSequenzen" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:label="Steuersequenzen" prodata:columnLabel="Steuersequenzen" prodata:help="Liste der zu sendenden symbolischen Steuercodes"/>
+                <xsd:element name="FeldNummer" type="xsd:int" nillable="true" prodata:format="zz9" prodata:label="Feldnummer" prodata:columnLabel="FdNr" prodata:help="intern vergebene, je Unterabschnitt eindeutige Feldnummer"/>
+                <xsd:element name="FeldFormat" type="xsd:string" nillable="true" prodata:format="x(50)" prodata:label="Druckformat" prodata:columnLabel="Druckformat"/>
+                <xsd:element name="Druckstellen" type="xsd:int" nillable="true" default="15" prodata:format="zz9" prodata:columnLabel="DStl" prodata:help="Anzahl der zu druckenden Zeichen (>= Format) oder ?"/>
+                <xsd:element name="Ausrichtung" type="xsd:boolean" nillable="true" prodata:format="links/rechts" prodata:columnLabel="Ausri"/>
+                <xsd:element name="unterdruecken" type="xsd:boolean" nillable="true" prodata:format="ja/nein" prodata:label="unterdrücken" prodata:columnLabel="udr"/>
+                <xsd:element name="UmbruchZeile" type="xsd:int" nillable="true" default="99" prodata:format="z9" prodata:label="Umbruch Zeile" prodata:columnLabel="UbZl" prodata:help="automatischer Seitenumbruch, wenn aktuelle Zeile größer als"/>
+                <xsd:element name="BG_FFeld_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BG_FFeld_Obj"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBG_FFeldSpr" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBG_FFeldSpr_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Firma" type="xsd:string" nillable="true" prodata:format="x(10)" prodata:columnLabel="Firma"/>
+                <xsd:element name="Formular" type="xsd:string" nillable="true" prodata:format="x(6)" prodata:columnLabel="Fom"/>
+                <xsd:element name="FormularNr" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="Formularnummer" prodata:columnLabel="FN"/>
+                <xsd:element name="Abschnitt" type="xsd:string" nillable="true" prodata:format="x(3)" prodata:columnLabel="Abs"/>
+                <xsd:element name="UnterAbschnitt" type="xsd:string" nillable="true" prodata:format="x(3)" prodata:label="Unterabschnitt" prodata:columnLabel="UAbs"/>
+                <xsd:element name="FeldNummer" type="xsd:int" nillable="true" prodata:format="zz9" prodata:label="Feldnummer" prodata:columnLabel="FdNr" prodata:help="intern vergebene, je Unterabschnitt eindeutige Feldnummer"/>
+                <xsd:element name="Sprache" type="xsd:string" nillable="true" default="D" prodata:format="x(3)" prodata:columnLabel="Spr"/>
+                <xsd:element name="Feldinhalt" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:label="Text" prodata:columnLabel="Text"/>
+                <xsd:element name="FeldFormat" type="xsd:string" nillable="true" prodata:format="x(50)" prodata:label="Druckformat" prodata:columnLabel="Druckformat"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBG_FText" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBG_FText_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Firma" type="xsd:string" nillable="true" prodata:format="x(10)" prodata:columnLabel="Firma"/>
+                <xsd:element name="Formular" type="xsd:string" nillable="true" prodata:format="x(6)" prodata:columnLabel="Fom"/>
+                <xsd:element name="FormularNr" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="Formularnummer" prodata:columnLabel="FN"/>
+                <xsd:element name="TextArt" type="xsd:string" nillable="true" prodata:format="x(6)" prodata:label="Textart" prodata:columnLabel="TxtArt"/>
+                <xsd:element name="Schluessel" type="xsd:string" nillable="true" prodata:format="x(3)" prodata:label="Schlüssel" prodata:columnLabel="Schl"/>
+                <xsd:element name="BG_FText_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BG_FText_Obj"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBT_Kopf" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBT_Kopf_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="TextArt" type="xsd:string" nillable="true" prodata:format="x(6)" prodata:label="Textart" prodata:columnLabel="TxtArt"/>
+                <xsd:element name="Sprache" type="xsd:string" nillable="true" default="D" prodata:format="x(3)" prodata:columnLabel="Spr"/>
+                <xsd:element name="Firma" type="xsd:string" nillable="true" prodata:format="x(10)" prodata:columnLabel="Firma"/>
+                <xsd:element name="Owning_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="Owning_Obj"/>
+                <xsd:element name="AnlageBenutzer" type="xsd:string" nillable="true" prodata:format="x(12)" prodata:label="angelegt durch" prodata:columnLabel="angel durch"/>
+                <xsd:element name="AnlageDatum" type="xsd:date" nillable="true" prodata:initial="prodata:today" prodata:format="99.99.9999" prodata:label="Anlagedatum" prodata:columnLabel="AnlDatum"/>
+                <xsd:element name="AnlageZeit" type="xsd:string" nillable="true" prodata:label="Anlagezeit" prodata:columnLabel="AnlZt"/>
+                <xsd:element name="AenderungBenutzer" type="xsd:string" nillable="true" prodata:format="x(12)" prodata:label="geändert durch" prodata:columnLabel="geänd durch"/>
+                <xsd:element name="AenderungDatum" type="xsd:date" nillable="true" prodata:format="99.99.9999" prodata:label="Änderungsdatum" prodata:columnLabel="ÄndDatum"/>
+                <xsd:element name="AenderungZeit" type="xsd:string" nillable="true" prodata:label="Änderungszeit" prodata:columnLabel="ÄndZeit"/>
+                <xsd:element name="BT_Kopf_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BT_Kopf_Obj"/>
+                <xsd:element name="PlainText" type="xsd:string" nillable="true" prodata:dataType="prodata:clob" prodata:columnCodepage="UTF-8"/>
+                <xsd:element name="RTFText" type="xsd:string" nillable="true" prodata:dataType="prodata:clob" prodata:columnCodepage="UTF-8"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBMC_PrintLayout" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBMC_PrintLayout_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="BMC_PrintLayout_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BMC_PrintLayout_Obj"/>
+                <xsd:element name="BMC_PrintLayout_Id" type="xsd:string" nillable="true" prodata:format="x(20)" prodata:label="Drucklayout" prodata:columnLabel="Drucklayout"/>
+                <xsd:element name="Layout" type="xsd:base64Binary" nillable="true" prodata:dataType="prodata:blob" prodata:label="" prodata:columnLabel=""/>
+                <xsd:element name="LLLSP" type="xsd:base64Binary" nillable="true" prodata:dataType="prodata:blob" prodata:label="" prodata:columnLabel=""/>
+                <xsd:element name="LayoutVersion" type="xsd:int" nillable="true" prodata:format="zzzzz9" prodata:label="Layoutversion" prodata:columnLabel="LVer"/>
+                <xsd:element name="LayoutType" type="xsd:int" nillable="true" prodata:format="z9" prodata:label="Layouttyp" prodata:columnLabel="Layouttyp"/>
+                <xsd:element name="LayoutLanguage" type="xsd:string" nillable="true" default="D" prodata:format="x(3)" prodata:label="Sprache" prodata:columnLabel="Spr"/>
+                <xsd:element name="LLProjectIncludes" type="xsd:string" nillable="true" prodata:format="x(120)" prodata:label="Projektbausteine" prodata:columnLabel="Projektbausteine"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBMC_ListLabelData" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBMC_ListLabelData_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="BMC_ListLabelData_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BMC_ListLabelData_Obj"/>
+                <xsd:element name="BMC_PrintLayout_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BMC_PrintLayout_Obj"/>
+                <xsd:element name="ObjectType" type="xsd:string" nillable="true" prodata:format="x(40)" prodata:label="Objekttyp" prodata:columnLabel="Objekttyp"/>
+                <xsd:element name="ChangeDate" type="xsd:date" nillable="true" prodata:format="99.99.9999" prodata:label="Änderungsdatum" prodata:columnLabel="ÄndDatum"/>
+                <xsd:element name="ObjectData" type="xsd:base64Binary" nillable="true" prodata:dataType="prodata:blob" prodata:label="" prodata:columnLabel=""/>
+                <xsd:element name="RepositoryID" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:label="LLRepositoryID" prodata:columnLabel="LLRepositoryID"/>
+                <xsd:element name="UsedObjects" type="xsd:string" nillable="true" prodata:format="x(120)" prodata:label="verwendete Objekte" prodata:columnLabel="verwendete Objekte"/>
+                <xsd:element name="ProjectIncludes" type="xsd:string" nillable="true" prodata:format="x(120)" prodata:label="Projektbausteine" prodata:columnLabel="Projektbausteine"/>
+                <xsd:element name="Metadata" type="xsd:string" nillable="true" prodata:dataType="prodata:clob"/>
+                <xsd:element name="ObjectName" type="xsd:string" nillable="true" prodata:format="x(120)" prodata:label="Name" prodata:columnLabel="Name"/>
+                <xsd:element name="Parent_BMC_ListLabelData_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="Parent_BMC_ListLabelData_Obj"/>
+                <xsd:element name="lastUpdate" type="xsd:dateTime" nillable="true" prodata:format="99.99.9999 HH:MM:SS.SSS+HH:MM" prodata:label="Last Update" prodata:columnLabel="Last Update"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBMC_PrintLayoutUsage" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBMC_PrintLayoutUsage_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Owning_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="Owning_Obj"/>
+                <xsd:element name="BMC_PrintLayout_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BMC_PrintLayout_Obj"/>
+                <xsd:element name="BMC_PrintLayoutUsage_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BMC_PrintLayoutUsage_Obj"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttDBM_ShortDescription-PL" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttDBM_ShortDescription-PL_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Owning_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="Owning_Obj"/>
+                <xsd:element name="ShortDesc1" type="xsd:string" nillable="true" prodata:format="x(80)" prodata:label="Bezeichnung" prodata:columnLabel="Bezeichnung"/>
+                <xsd:element name="ShortDesc2" type="xsd:string" nillable="true" prodata:format="x(80)" prodata:label="Bezeichnung 2" prodata:columnLabel="Bezeichnung 2"/>
+                <xsd:element name="ShortDesc3" type="xsd:string" nillable="true" prodata:format="x(80)" prodata:label="Bezeichnung 3" prodata:columnLabel="Bezeichnung 3"/>
+                <xsd:element name="ShortDesc4" type="xsd:string" nillable="true" prodata:format="x(80)" prodata:label="Bezeichnung 4" prodata:columnLabel="Bezeichnung 4"/>
+                <xsd:element name="Sprache" type="xsd:string" nillable="true" default="D" prodata:format="x(3)" prodata:columnLabel="Spr"/>
+                <xsd:element name="Reconcile_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="Reconcile_Obj"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttBMM_LayoutText" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttBMM_LayoutText_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="BMM_LayoutText_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="BMM_LayoutText_Obj"/>
+                <xsd:element name="Owning_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="Owning_Obj"/>
+                <xsd:element name="LayoutText" type="xsd:string" nillable="true" prodata:format="x(1500)" prodata:label="Textschlüssel" prodata:columnLabel="Textschlüssel"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="ttDBM_ShortDescription-LT" minOccurs="0" maxOccurs="unbounded" prodata:beforeTable="ttDBM_ShortDescription-LT_Old">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="Owning_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="Owning_Obj"/>
+                <xsd:element name="ShortDesc1" type="xsd:string" nillable="true" prodata:format="x(80)" prodata:label="Bezeichnung" prodata:columnLabel="Bezeichnung"/>
+                <xsd:element name="ShortDesc2" type="xsd:string" nillable="true" prodata:format="x(80)" prodata:label="Bezeichnung 2" prodata:columnLabel="Bezeichnung 2"/>
+                <xsd:element name="ShortDesc3" type="xsd:string" nillable="true" prodata:format="x(80)" prodata:label="Bezeichnung 3" prodata:columnLabel="Bezeichnung 3"/>
+                <xsd:element name="ShortDesc4" type="xsd:string" nillable="true" prodata:format="x(80)" prodata:label="Bezeichnung 4" prodata:columnLabel="Bezeichnung 4"/>
+                <xsd:element name="Sprache" type="xsd:string" nillable="true" default="D" prodata:format="x(3)" prodata:columnLabel="Spr"/>
+                <xsd:element name="Reconcile_Obj" type="xsd:string" nillable="true" prodata:format="x(60)" prodata:columnLabel="Reconcile_Obj"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:sequence>
+      </xsd:complexType>
+      <xsd:unique name="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBG_FKopf"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+      </xsd:unique>
+      <xsd:unique name="Obj">
+        <xsd:selector xpath=".//ttBG_FKopf"/>
+        <xsd:field xpath="BG_FKopf_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="ttBG_FKopfSpr_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBG_FKopfSpr"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+        <xsd:field xpath="Sprache"/>
+      </xsd:unique>
+      <xsd:unique name="ttBG_FAbschnitt_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBG_FAbschnitt"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+        <xsd:field xpath="Abschnitt"/>
+      </xsd:unique>
+      <xsd:unique name="ttBG_FAbschnitt_Obj" prodata:indexName="Obj">
+        <xsd:selector xpath=".//ttBG_FAbschnitt"/>
+        <xsd:field xpath="BG_FAbschnitt_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="ttBG_FFeld_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBG_FFeld"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+        <xsd:field xpath="Abschnitt"/>
+        <xsd:field xpath="UnterAbschnitt"/>
+        <xsd:field xpath="FeldNummer"/>
+      </xsd:unique>
+      <xsd:unique name="ttBG_FFeld_Obj" prodata:indexName="Obj">
+        <xsd:selector xpath=".//ttBG_FFeld"/>
+        <xsd:field xpath="BG_FFeld_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="ttBG_FFeldSpr_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBG_FFeldSpr"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+        <xsd:field xpath="Abschnitt"/>
+        <xsd:field xpath="UnterAbschnitt"/>
+        <xsd:field xpath="FeldNummer"/>
+        <xsd:field xpath="Sprache"/>
+      </xsd:unique>
+      <xsd:unique name="ttBG_FText_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBG_FText"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+        <xsd:field xpath="TextArt"/>
+        <xsd:field xpath="Schluessel"/>
+      </xsd:unique>
+      <xsd:unique name="ttBG_FText_Obj" prodata:indexName="Obj">
+        <xsd:selector xpath=".//ttBG_FText"/>
+        <xsd:field xpath="BG_FText_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="ttBT_Kopf_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBT_Kopf"/>
+        <xsd:field xpath="TextArt"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Owning_Obj"/>
+        <xsd:field xpath="Sprache"/>
+      </xsd:unique>
+      <xsd:unique name="ttBT_Kopf_Obj" prodata:indexName="Obj">
+        <xsd:selector xpath=".//ttBT_Kopf"/>
+        <xsd:field xpath="BT_Kopf_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="Owner">
+        <xsd:selector xpath=".//ttBT_Kopf"/>
+        <xsd:field xpath="Owning_Obj"/>
+        <xsd:field xpath="TextArt"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Sprache"/>
+      </xsd:unique>
+      <xsd:unique name="ttBMC_PrintLayout_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBMC_PrintLayout"/>
+        <xsd:field xpath="BMC_PrintLayout_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="ttBMC_ListLabelData_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBMC_ListLabelData"/>
+        <xsd:field xpath="BMC_ListLabelData_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="RepositoryID">
+        <xsd:selector xpath=".//ttBMC_ListLabelData"/>
+        <xsd:field xpath="RepositoryID"/>
+      </xsd:unique>
+      <xsd:unique name="Layout">
+        <xsd:selector xpath=".//ttBMC_PrintLayoutUsage"/>
+        <xsd:field xpath="BMC_PrintLayout_Obj"/>
+        <xsd:field xpath="Owning_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="ttBMC_PrintLayoutUsage_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBMC_PrintLayoutUsage"/>
+        <xsd:field xpath="Owning_Obj"/>
+        <xsd:field xpath="BMC_PrintLayout_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="ttBMC_PrintLayoutUsage_Obj" prodata:indexName="Obj">
+        <xsd:selector xpath=".//ttBMC_PrintLayoutUsage"/>
+        <xsd:field xpath="BMC_PrintLayoutUsage_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttDBM_ShortDescription-PL"/>
+        <xsd:field xpath="Owning_Obj"/>
+        <xsd:field xpath="Sprache"/>
+      </xsd:unique>
+      <xsd:unique name="ttBMM_LayoutText_Main" prodata:indexName="Main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttBMM_LayoutText"/>
+        <xsd:field xpath="BMM_LayoutText_Obj"/>
+      </xsd:unique>
+      <xsd:unique name="ttDBM_ShortDescription-LT_main" prodata:indexName="main" prodata:primaryIndex="true">
+        <xsd:selector xpath=".//ttDBM_ShortDescription-LT"/>
+        <xsd:field xpath="Owning_Obj"/>
+        <xsd:field xpath="Sprache"/>
+      </xsd:unique>
+      <xsd:keyref name="drBG_FKopfSpr" refer="Main">
+        <xsd:selector xpath=".//ttBG_FKopfSpr"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+      </xsd:keyref>
+      <xsd:keyref name="drBG_FAbschnitt" refer="Main">
+        <xsd:selector xpath=".//ttBG_FAbschnitt"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+      </xsd:keyref>
+      <xsd:keyref name="drBG_FFeld" refer="Main">
+        <xsd:selector xpath=".//ttBG_FFeld"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+      </xsd:keyref>
+      <xsd:keyref name="drBG_FFeldSpr" refer="ttBG_FFeld_Main">
+        <xsd:selector xpath=".//ttBG_FFeldSpr"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+        <xsd:field xpath="Abschnitt"/>
+        <xsd:field xpath="UnterAbschnitt"/>
+        <xsd:field xpath="FeldNummer"/>
+      </xsd:keyref>
+      <xsd:keyref name="drBG_FText" refer="Main">
+        <xsd:selector xpath=".//ttBG_FText"/>
+        <xsd:field xpath="Firma"/>
+        <xsd:field xpath="Formular"/>
+        <xsd:field xpath="FormularNr"/>
+      </xsd:keyref>
+      <xsd:keyref name="drBT_Kopf" refer="ttBG_FText_Obj">
+        <xsd:selector xpath=".//ttBT_Kopf"/>
+        <xsd:field xpath="Owning_Obj"/>
+      </xsd:keyref>
+      <xsd:keyref name="drKopfPrintLayoutUsage" refer="Obj">
+        <xsd:selector xpath=".//ttBMC_PrintLayoutUsage"/>
+        <xsd:field xpath="Owning_Obj"/>
+      </xsd:keyref>
+      <xsd:keyref name="drPrintLayoutDesc" refer="ttBMC_PrintLayout_Main">
+        <xsd:selector xpath=".//ttDBM_ShortDescription-PL"/>
+        <xsd:field xpath="Owning_Obj"/>
+      </xsd:keyref>
+      <xsd:keyref name="drLayoutText" refer="ttBMC_PrintLayout_Main">
+        <xsd:selector xpath=".//ttBMM_LayoutText"/>
+        <xsd:field xpath="Owning_Obj"/>
+      </xsd:keyref>
+      <xsd:keyref name="drTextTrans" refer="ttBMM_LayoutText_Main">
+        <xsd:selector xpath=".//ttDBM_ShortDescription-LT"/>
+        <xsd:field xpath="Owning_Obj"/>
+      </xsd:keyref>
+      <xsd:keyref name="drListLabelData" refer="ttBMC_PrintLayout_Main">
+        <xsd:selector xpath=".//ttBMC_ListLabelData"/>
+        <xsd:field xpath="BMC_PrintLayout_Obj"/>
+      </xsd:keyref>
+    </xsd:element>
+    <xsd:annotation>
+      <xsd:appinfo>
+        <prodata:index name="Druck">
+          <prodata:table name="ttBG_FFeld"/>
+          <prodata:field name="Firma"/>
+          <prodata:field name="Formular"/>
+          <prodata:field name="FormularNr"/>
+          <prodata:field name="Abschnitt"/>
+          <prodata:field name="UnterAbschnitt"/>
+          <prodata:field name="Zeile"/>
+          <prodata:field name="Spalte"/>
+        </prodata:index>
+        <prodata:index name="Verw">
+          <prodata:table name="ttBG_FFeld"/>
+          <prodata:field name="Firma"/>
+          <prodata:field name="Formular"/>
+          <prodata:field name="FormularNr"/>
+          <prodata:field name="Abschnitt"/>
+          <prodata:field name="UnterAbschnitt"/>
+          <prodata:field name="FeldTyp"/>
+          <prodata:field name="TabellenName"/>
+          <prodata:field name="SpaltenName"/>
+        </prodata:index>
+        <prodata:index name="Id">
+          <prodata:table name="ttBMC_PrintLayout"/>
+          <prodata:field name="BMC_PrintLayout_Id"/>
+        </prodata:index>
+        <prodata:index name="BMC_PrintLayout_Obj">
+          <prodata:table name="ttBMC_ListLabelData"/>
+          <prodata:field name="BMC_PrintLayout_Obj"/>
+          <prodata:field name="ObjectType"/>
+        </prodata:index>
+        <prodata:index name="NameIdx">
+          <prodata:table name="ttBMC_ListLabelData"/>
+          <prodata:field name="ObjectName"/>
+        </prodata:index>
+        <prodata:index name="ObjectType">
+          <prodata:table name="ttBMC_ListLabelData"/>
+          <prodata:field name="ObjectType"/>
+        </prodata:index>
+        <prodata:index name="OwningObj">
+          <prodata:table name="ttBMM_LayoutText"/>
+          <prodata:field name="Owning_Obj"/>
+        </prodata:index>
+        <prodata:relation name="drPrintLayoutUsagePrintLayout" prodata:parent="ttBMC_PrintLayoutUsage" prodata:child="ttBMC_PrintLayout" prodata:relationFields="BMC_PrintLayout_Obj,BMC_PrintLayout_Obj"/>
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:schema>
+  <ttBG_FKopf>
+    <Firma>1</Firma>
+    <Formular>VNA</Formular>
+    <FormularNr>62</FormularNr>
+    <Anzahl_Zeilen>65</Anzahl_Zeilen>
+    <Anzahl_Spalten>80</Anzahl_Spalten>
+    <SteuerSequenzen/>
+    <Generatortyp>L</Generatortyp>
+    <CodePage>$OpSys</CodePage>
+    <BG_FKopf_Obj>PA0173:zWLD:b30524d10b3506b5dd142738647b6b82</BG_FKopf_Obj>
+  </ttBG_FKopf>
+  <ttBG_FKopfSpr>
+    <Firma>1</Firma>
+    <Formular>VNA</Formular>
+    <FormularNr>62</FormularNr>
+    <Sprache>D</Sprache>
+    <Bezeichnung>New test template</Bezeichnung>
+  </ttBG_FKopfSpr>
+  <ttBG_FKopfSpr>
+    <Firma>1</Firma>
+    <Formular>VNA</Formular>
+    <FormularNr>62</FormularNr>
+    <Sprache>E</Sprache>
+    <Bezeichnung>New test template</Bezeichnung>
+  </ttBG_FKopfSpr>
+  <ttBG_FAbschnitt>
+    <Firma>1</Firma>
+    <Formular>VNA</Formular>
+    <FormularNr>62</FormularNr>
+    <Abschnitt>F</Abschnitt>
+    <fruehester_Beginn>56</fruehester_Beginn>
+    <spaetester_Beginn>56</spaetester_Beginn>
+    <spaetestes_Ende>99</spaetestes_Ende>
+    <BG_FAbschnitt_Obj>PA0170:zWLD:b30524d10b3506b5dd1427384c61d784</BG_FAbschnitt_Obj>
+  </ttBG_FAbschnitt>
+  <ttBG_FAbschnitt>
+    <Firma>1</Firma>
+    <Formular>VNA</Formular>
+    <FormularNr>62</FormularNr>
+    <Abschnitt>K</Abschnitt>
+    <fruehester_Beginn>1</fruehester_Beginn>
+    <spaetester_Beginn>1</spaetester_Beginn>
+    <spaetestes_Ende>55</spaetestes_Ende>
+    <BG_FAbschnitt_Obj>PA0170:zWLD:b30524d10b3506b5dd142738b0130785</BG_FAbschnitt_Obj>
+  </ttBG_FAbschnitt>
+  <ttBG_FAbschnitt>
+    <Firma>1</Firma>
+    <Formular>VNA</Formular>
+    <FormularNr>62</FormularNr>
+    <Abschnitt>P</Abschnitt>
+    <fruehester_Beginn>20</fruehester_Beginn>
+    <spaetester_Beginn>40</spaetester_Beginn>
+    <spaetestes_Ende>55</spaetestes_Ende>
+    <BG_FAbschnitt_Obj>PA0170:zWLD:b30524d10b3506b5dd142738b1130785</BG_FAbschnitt_Obj>
+  </ttBG_FAbschnitt>
+  <ttBG_FAbschnitt>
+    <Firma>1</Firma>
+    <Formular>VNA</Formular>
+    <FormularNr>62</FormularNr>
+    <Abschnitt>PAY</Abschnitt>
+    <fruehester_Beginn>55</fruehester_Beginn>
+    <spaetester_Beginn>55</spaetester_Beginn>
+    <spaetestes_Ende>55</spaetestes_Ende>
+    <BG_FAbschnitt_Obj>PA0170:zWLD:b30524d10b3506b5dd142738b2130785</BG_FAbschnitt_Obj>
+  </ttBG_FAbschnitt>
+  <ttBG_FAbschnitt>
+    <Firma>1</Firma>
+    <Formular>VNA</Formular>
+    <FormularNr>62</FormularNr>
+    <Abschnitt>S</Abschnitt>
+    <fruehester_Beginn>54</fruehester_Beginn>
+    <spaetester_Beginn>54</spaetester_Beginn>
+    <spaetestes_Ende>54</spaetestes_Ende>
+    <BG_FAbschnitt_Obj>PA0170:zWLD:b30524d10b3506b5dd142738b3130785</BG_FAbschnitt_Obj>
+  </ttBG_FAbschnitt>
+</dsBG_Form>
