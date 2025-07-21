@@ -15,9 +15,16 @@ class JsonToListLabelConverter:
     """Converts JSON files to List & Label .pdi format"""
 
     def __init__(self, template_path: str = "Empty_List_Label.pdi"):
-        self.template_path = template_path
         if not os.path.exists(template_path):
-            raise FileNotFoundError(f"Template file not found: {template_path}")
+            # Try ../Empty_List_Label.pdi relative to the script's directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            alt_template_path = os.path.normpath(os.path.join(script_dir, "../Empty_List_Label.pdi"))
+            if os.path.exists(alt_template_path):
+                template_path = alt_template_path
+            else:
+                raise FileNotFoundError(f"Template file not found: {template_path} or {alt_template_path}")
+
+        self.template_path = template_path
 
         # Load the template
         try:
