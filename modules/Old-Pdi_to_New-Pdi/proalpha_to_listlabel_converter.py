@@ -18,7 +18,7 @@ class JsonToListLabelConverter:
         if not os.path.exists(template_path):
             # Try ../Empty_List_Label.pdi relative to the script's directory
             script_dir = os.path.dirname(os.path.abspath(__file__))
-            alt_template_path = os.path.normpath(os.path.join(script_dir, "../Empty_List_Label.pdi"))
+            alt_template_path = os.path.normpath(os.path.join(script_dir, "./Empty_List_Label.pdi"))
             if os.path.exists(alt_template_path):
                 template_path = alt_template_path
             else:
