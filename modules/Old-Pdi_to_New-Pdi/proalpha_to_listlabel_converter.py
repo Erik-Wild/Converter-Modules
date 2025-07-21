@@ -14,15 +14,16 @@ logging.basicConfig(level=logging.INFO, filename='json_to_listlabel_conversion.l
 class JsonToListLabelConverter:
     """Converts JSON files to List & Label .pdi format"""
 
-    def __init__(self, template_path: str = "Empty_List_Label.pdi"):
-        if not os.path.exists(template_path):
-            # Try ../Empty_List_Label.pdi relative to the script's directory
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            alt_template_path = os.path.normpath(os.path.join(script_dir, "./Empty_List_Label.pdi"))
-            if os.path.exists(alt_template_path):
-                template_path = alt_template_path
-            else:
-                raise FileNotFoundError(f"Template file not found: {template_path} or {alt_template_path}")
+    def __init__(self, template_path: str = "Empty_List_Label.pdi", additional_files: List[str] = None):
+        # Use additional_files from pipeline if provided
+        template_file = None
+        if additional_files:
+            for f in additional_files:
+                if os.path.basename(f).lower() == "empty_list_label.pdi":
+                    template_file = f
+                    break
+        if template_file and os.path.exists(template_file):
+            template_path = template_file
 
         self.template_path = template_path
 
@@ -315,8 +316,7 @@ class JsonToListLabelConverter:
                 ET.SubElement(text_kopf_elem, 'BT_Kopf_Obj').text = text_obj_id
 
 
-def convert(input_files: List[str], output_dir: str = None, template_path: str = "Empty_List_Label.pdi", **options) -> \
-List[str]:
+def convert(input_files: List[str], output_dir: str = None, template_path: str = "Empty_List_Label.pdi", additional_files: List[str] = None, **options) -> List[str]:
     """
     Main conversion function for the module system
 
@@ -324,13 +324,14 @@ List[str]:
         input_files: List of JSON file paths to convert
         output_dir: Directory for output .pdi files
         template_path: Path to the template .pdi file
+        additional_files: List of additional files from pipeline
         **options: Additional conversion options
 
     Returns:
         List of generated .pdi file paths
     """
     try:
-        converter = JsonToListLabelConverter(template_path)
+        converter = JsonToListLabelConverter(template_path, additional_files)
     except Exception as e:
         logging.error(f"Failed to initialize converter: {str(e)}")
         return []
