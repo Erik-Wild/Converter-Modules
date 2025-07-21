@@ -15,24 +15,56 @@ class JsonToListLabelConverter:
     """Converts JSON files to List & Label .pdi format"""
 
     def __init__(self, template_path: str = "Empty_List_Label.pdi", additional_files: List[str] = None):
+        print(f"[DEBUG] JsonToListLabelConverter init:")
+        print(f"  template_path: {template_path}")
+        print(f"  additional_files: {additional_files}")
+
         # Use additional_files from pipeline if provided
         template_file = None
         if additional_files:
+            print(f"[DEBUG] Searching for Empty_List_Label.pdi in additional_files:")
             for f in additional_files:
+                print(f"  Checking: {f}")
                 if os.path.basename(f).lower() == "empty_list_label.pdi":
                     template_file = f
+                    print(f"  Found template file: {template_file}")
                     break
+
         if template_file and os.path.exists(template_file):
             template_path = template_file
+            print(f"[DEBUG] Using template from additional_files: {template_path}")
+        else:
+            print(f"[DEBUG] Template not found in additional_files, using fallback: {template_path}")
+            # Fallback to previous search logic
+            possible_paths = [
+                template_path,
+                os.path.join(os.getcwd(), "Empty_List_Label.pdi"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "Empty_List_Label.pdi"),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "examples",
+                             "Empty_List_Label.pdi"),
+            ]
+            found = False
+            for path in possible_paths:
+                print(f"[DEBUG] Checking fallback path: {path}")
+                if os.path.exists(path):
+                    template_path = path
+                    found = True
+                    print(f"[DEBUG] Found template at: {template_path}")
+                    break
+            if not found:
+                raise FileNotFoundError(f"Template file Empty_List_Label.pdi not found in any of: {possible_paths}")
 
         self.template_path = template_path
+        print(f"[DEBUG] Final template path: {self.template_path}")
 
         # Load the template
         try:
             self.template_tree = ET.parse(template_path)
             self.template_root = self.template_tree.getroot()
+            print(f"[DEBUG] Template loaded successfully")
         except ET.ParseError as e:
             logging.error(f"Failed to parse template file {template_path}: {str(e)}")
+            print(f"[ERROR] Failed to parse template file {template_path}: {str(e)}")
             raise
 
     def convert_file(self, json_file_path: str, output_path: str = None) -> str:
@@ -316,7 +348,8 @@ class JsonToListLabelConverter:
                 ET.SubElement(text_kopf_elem, 'BT_Kopf_Obj').text = text_obj_id
 
 
-def convert(input_files: List[str], output_dir: str = None, template_path: str = "Empty_List_Label.pdi", additional_files: List[str] = None, **options) -> List[str]:
+def convert(input_files: List[str], output_dir: str = None, template_path: str = "Empty_List_Label.pdi",
+            additional_files: List[str] = None, **options) -> List[str]:
     """
     Main conversion function for the module system
 
@@ -330,18 +363,28 @@ def convert(input_files: List[str], output_dir: str = None, template_path: str =
     Returns:
         List of generated .pdi file paths
     """
+    print(f"[DEBUG] convert() called with:")
+    print(f"  input_files: {input_files}")
+    print(f"  output_dir: {output_dir}")
+    print(f"  template_path: {template_path}")
+    print(f"  additional_files: {additional_files}")
+    print(f"  options: {options}")
+
     try:
         converter = JsonToListLabelConverter(template_path, additional_files)
     except Exception as e:
         logging.error(f"Failed to initialize converter: {str(e)}")
+        print(f"[ERROR] Failed to initialize converter: {str(e)}")
         return []
 
     output_files = []
 
     for input_file in input_files:
+        print(f"[DEBUG] Processing input file: {input_file}")
         try:
             if not input_file.lower().endswith('.json'):
                 logging.warning(f"Skipping non-JSON file: {input_file}")
+                print(f"[WARNING] Skipping non-JSON file: {input_file}")
                 continue
 
             if output_dir:
@@ -351,13 +394,16 @@ def convert(input_files: List[str], output_dir: str = None, template_path: str =
             else:
                 output_path = None
 
+            print(f"[DEBUG] Converting to output path: {output_path}")
             result_path = converter.convert_file(input_file, output_path)
             output_files.append(result_path)
+            print(f"[DEBUG] Successfully converted to: {result_path}")
 
         except Exception as e:
             logging.error(f"Error converting {input_file}: {str(e)}")
-            print(f"Error converting {input_file}: {str(e)}")
+            print(f"[ERROR] Error converting {input_file}: {str(e)}")
 
+    print(f"[DEBUG] convert() returning: {output_files}")
     return output_files
 
 
