@@ -6,5 +6,5 @@ entry_point=proalpha_to_listlabel_converter.py
 created_date=2025-07-14
 last_updated=2024-06-14
 supported_formats=pdi
-output_format=lst
+output_format=pdi
 category=Report Conversion
