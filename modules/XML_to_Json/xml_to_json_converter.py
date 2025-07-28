@@ -25,12 +25,23 @@ class XMLToJsonConverter:
         Returns:
             Preprocessed XML content
         """
+        import time
+        start_time = time.time()
+        timeout_seconds = 30  # 30 second timeout
+
         if self.debug_mode:
+            print(f"=== STARTING XML PREPROCESSING ===")
             print(f"Preprocessing XML content of length {len(xml_content)}")
             print(f"First 100 characters: {xml_content[:100].replace(chr(10), '\\n')}")
 
+        # Check for timeout
+        def check_timeout():
+            if time.time() - start_time > timeout_seconds:
+                raise TimeoutError(f"XML preprocessing timed out after {timeout_seconds} seconds")
+
         # FIXED: Simplified XML declaration handling
         if xml_content.startswith('<?xml'):
+            check_timeout()
             # Find where the XML declaration ends
             decl_end = xml_content.find('?>')
             if decl_end > 0:
@@ -68,52 +79,125 @@ class XMLToJsonConverter:
 
         # Continue with other preprocessing steps
         processed_content = xml_content
+        check_timeout()
         iteration_count = 0
         max_iterations = 20  # Prevent infinite loops
 
-        # MUCH SAFER: Only attempt quote fixing if we can detect actual malformed attributes
-        # Look for specific problematic patterns like: attr="value"extra" or attr="val"ue"
+        # DETAILED DEBUG: Let's see what's actually happening with quote fixing
+        if self.debug_mode:
+            print("\n=== STARTING QUOTE ANALYSIS ===")
+            # Sample the first 2000 characters to look for quote patterns
+            sample = processed_content[:2000]
+            print(f"Sample content (first 2000 chars):\n{sample}")
+            print("\n=== CHECKING FOR QUOTE PATTERNS ===")
 
-        # First, let's check if there are actually problematic quotes
-        # Pattern for detecting genuinely malformed attributes
-        malformed_patterns = [
-            r'\w+\s*=\s*"[^"]*"[^>\s][^"]*"',  # attr="value"extra"
-            r'\w+\s*=\s*"[^"]*""[^"]*"',  # attr="value""more"
-        ]
+        # Check for various quote patterns with detailed output
+        malformed_patterns = {
+            'consecutive_quotes': r'""',  # Simple consecutive quotes
+            'attr_quote_issue': r'\w+\s*=\s*"[^"]*"[^>\s][^"]*"',  # attr="value"extra"
+            'double_quote_attr': r'\w+\s*=\s*"[^"]*""[^"]*"',  # attr="value""more"
+            'unescaped_quote': r'="[^"]*"[^"]*"',  # Simple unescaped quotes in attributes
+        }
 
-        needs_quote_fixing = False
-        for pattern in malformed_patterns:
-            if re.search(pattern, processed_content):
-                needs_quote_fixing = True
+        quote_issues_found = []
+        for pattern_name, pattern in malformed_patterns.items():
+            matches = list(re.finditer(pattern, processed_content))
+            if matches:
+                quote_issues_found.append(pattern_name)
                 if self.debug_mode:
-                    matches = re.findall(pattern, processed_content)
-                    print(f"Found malformed attribute pattern: {pattern}")
-                    print(f"Sample matches: {matches[:3]}")
-                break
+                    print(f"Pattern '{pattern_name}': Found {len(matches)} matches")
+                    # Show first few matches with context
+                    for i, match in enumerate(matches[:3]):
+                        start = max(0, match.start() - 30)
+                        end = min(len(processed_content), match.end() + 30)
+                        context = processed_content[start:end].replace('\n', '\\n')
+                        print(f"  Match {i + 1}: ...{context}...")
+                        print(f"    Position: {match.start()}-{match.end()}")
+                        print(f"    Matched text: '{match.group()}'")
 
-        if needs_quote_fixing:
-            # Only do quote fixing if we actually found problems
-            quote_pattern = r'(\w+\s*=\s*"[^"]*")(")'
+        if not quote_issues_found:
+            if self.debug_mode:
+                print("No quote issues detected - skipping quote fixing")
+        else:
+            if self.debug_mode:
+                print(f"Quote issues found: {quote_issues_found}")
+                print("Starting quote fixing process...")
+
+            # Use the most conservative pattern - only fix obvious consecutive quotes
+            quote_pattern = r'""'  # Just fix double quotes
             iteration_count = 0
-            max_iterations = 10  # Reduced iterations
+            max_iterations = 5  # Very limited iterations
 
-            while re.search(quote_pattern, processed_content) and iteration_count < max_iterations:
+            while '""' in processed_content and iteration_count < max_iterations:
+                check_timeout()  # Check for timeout
+
                 if self.debug_mode:
-                    print(f"Iteration {iteration_count}: Fixing quote issues...")
+                    double_quote_count = processed_content.count('""')
+                    print(f"Iteration {iteration_count}: Found {double_quote_count} double quotes")
+
+                    # Show where they are
+                    positions = []
+                    start = 0
+                    for _ in range(min(5, double_quote_count)):  # Show first 5
+                        pos = processed_content.find('""', start)
+                        if pos == -1:
+                            break
+                        positions.append(pos)
+                        start = pos + 1
+                    print(f"  Double quote positions: {positions}")
+
+                    # Show context for first few
+                    for i, pos in enumerate(positions[:2]):
+                        context_start = max(0, pos - 20)
+                        context_end = min(len(processed_content), pos + 20)
+                        context = processed_content[context_start:context_end].replace('\n', '\\n')
+                        print(f"  Context {i + 1}: ...{context}...")
 
                 old_content = processed_content
-                processed_content = re.sub(quote_pattern, r'\1&quot;', processed_content,
-                                           count=5)  # Fix max 5 at a time
+                old_length = len(processed_content)
+
+                # Replace consecutive quotes with quote + escaped quote
+                processed_content = processed_content.replace('""', '"&quot;', 10)  # Fix max 10 at a time
+
+                if self.debug_mode:
+                    changes_made = old_content != processed_content
+                    new_length = len(processed_content)
+                    print(f"  Changes made: {changes_made}")
+                    print(f"  Length change: {old_length} -> {new_length} (diff: {new_length - old_length})")
+                    if changes_made:
+                        new_double_quote_count = processed_content.count('""')
+                        print(f"  Double quotes remaining: {new_double_quote_count}")
 
                 # Check if we actually made changes
                 if old_content == processed_content:
+                    if self.debug_mode:
+                        print("  No changes made - breaking loop")
                     break
+
+                # Safety check - if we're not making progress, break
+                if iteration_count > 2 and processed_content.count('""') == double_quote_count:
+                    if self.debug_mode:
+                        print("  No progress made - breaking loop to prevent infinite loop")
+                    break
+
                 iteration_count += 1
-        else:
+
             if self.debug_mode:
-                print("No malformed quotes detected, skipping quote fixing")
+                final_double_quotes = processed_content.count('""')
+                print(
+                    f"Quote fixing complete. Iterations: {iteration_count}, Remaining double quotes: {final_double_quotes}")
+
+        if self.debug_mode:
+            print("=== QUOTE ANALYSIS COMPLETE ===\n")
+
+        if self.debug_mode:
+            print("=== CONTINUING WITH OTHER PREPROCESSING STEPS ===")
 
         # Fix standalone ampersands not part of entities
+        if self.debug_mode:
+            ampersand_count = len(re.findall(r'&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)', processed_content))
+            print(f"Fixing {ampersand_count} standalone ampersands...")
+
         processed_content = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)', '&amp;', processed_content)
 
         # Fix unclosed CDATA sections
@@ -123,9 +207,21 @@ class XMLToJsonConverter:
             processed_content = processed_content.replace('<![CDATA[', '')
 
         # Remove control characters that might cause XML parsing issues
+        if self.debug_mode:
+            control_chars = re.findall(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', processed_content)
+            if control_chars:
+                print(f"Removing {len(control_chars)} control characters...")
+
         processed_content = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', processed_content)
 
         # Handle malformed attributes (values without quotes) - IMPROVED
+        if self.debug_mode:
+            unquoted_attrs = re.findall(r'(\w+\s*=\s*)([^\s">][^\s>]*?)(\s|>)', processed_content)
+            if unquoted_attrs:
+                print(f"Found {len(unquoted_attrs)} potentially unquoted attributes, fixing...")
+                for i, attr in enumerate(unquoted_attrs[:3]):  # Show first 3
+                    print(f"  Unquoted attr {i + 1}: {attr[0]}{attr[1]}{attr[2]}")
+
         # Only match attribute values that are clearly unquoted (not already within quotes)
         processed_content = re.sub(r'(\w+\s*=\s*)([^\s">][^\s>]*?)(\s|>)', r'\1"\2"\3', processed_content)
 
@@ -133,8 +229,7 @@ class XMLToJsonConverter:
             final_declaration = processed_content[:50].split('\n')[0] if '\n' in processed_content[
                                                                                  :50] else processed_content[:50]
             print(f"Final XML declaration: '{final_declaration}'")
-
-        return processed_content
+            print("=== PREPROCESSING COMPLETE ===\n")
 
     def convert_file(self, xml_file_path: str, output_path: str = None) -> str:
         """
