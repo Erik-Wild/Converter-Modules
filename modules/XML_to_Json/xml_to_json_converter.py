@@ -28,6 +28,26 @@ class XMLToJsonConverter:
         if self.debug_mode:
             print(f"Preprocessing XML content of length {len(xml_content)}")
 
+        # Fix malformed XML declaration - critical to handle first
+        xml_decl_pattern = r'<\?xml\s+version\s*=\s*"([^"]*)\??>'
+        if re.search(xml_decl_pattern, xml_content):
+            if self.debug_mode:
+                print("Found malformed XML declaration, fixing...")
+
+            # Fix missing closing quote in XML declaration
+            xml_content = re.sub(r'<\?xml\s+version\s*=\s*"([^"]*)\?>',
+                               r'<?xml version="\1"?>',
+                               xml_content)
+
+            # Fix other common XML declaration issues
+            xml_content = re.sub(r'<\?xml\s+version\s*=\s*"([^"]*)>',
+                               r'<?xml version="\1"?>',
+                               xml_content)
+
+        # Add proper XML declaration if missing
+        if not xml_content.strip().startswith('<?xml'):
+            xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
+
         # Fix unescaped quotes in attribute values
         # This is a common issue in PDI files
         processed_content = xml_content
@@ -67,6 +87,19 @@ class XMLToJsonConverter:
 
         # Remove control characters that might cause XML parsing issues
         processed_content = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', processed_content)
+
+        # Handle malformed attributes (no quotes around values)
+        # Fix the syntax error in the regex replacement
+        processed_content = re.sub(r'=([^\s">]+)(\s|>)', r'"\1"\2', processed_content)
+
+        # Fix missing closing tags - only for basic elements
+        for tag_match in re.finditer(r'<([a-zA-Z0-9_:-]+)([^>]*)>', processed_content):
+            tag_name = tag_match.group(1)
+            # Check if self-closing or has a closing tag
+            if not re.search(f'</{tag_name}>', processed_content) and not '/' in tag_match.group(2):
+                processed_content += f'</{tag_name}>'
+                if self.debug_mode:
+                    print(f"Added missing closing tag for <{tag_name}>")
 
         return processed_content
 
@@ -197,7 +230,13 @@ class XMLToJsonConverter:
                                         print(f"Problematic character at column {col_num}: '{problem_char}'")
 
                                     # Replace the problematic character
-                                    fixed_line = problem_line[:col_num-1] + ' ' + problem_line[col_num:]
+                                    if '"' in problem_line and problem_line.count('"') % 2 == 1:
+                                        # Fix missing quotes
+                                        fixed_line = problem_line + '"'
+                                    else:
+                                        # Replace with space as fallback
+                                        fixed_line = problem_line[:col_num-1] + ' ' + problem_line[col_num:]
+
                                     lines[line_num - 1] = fixed_line
 
                                     fixed_xml = '\n'.join(lines)
@@ -207,6 +246,21 @@ class XMLToJsonConverter:
                                             print("Successfully parsed after fixing specific character!")
                                     except Exception as fix_err:
                                         errors.append(f"Character fixing failed: {fix_err}")
+
+                # If all else fails, try to convert using xmltodict as a last resort
+                if not root:
+                    try:
+                        import xmltodict
+                        # Parse XML into dict using xmltodict (more tolerant)
+                        xml_dict = xmltodict.parse(processed_xml)
+
+                        # Convert back to XML string and then to ElementTree
+                        xml_str = xmltodict.unparse(xml_dict)
+                        root = ET.fromstring(xml_str)
+                        if self.debug_mode:
+                            print("Successfully parsed using xmltodict workaround")
+                    except Exception as xmltodict_err:
+                        errors.append(f"xmltodict method failed: {xmltodict_err}")
 
                 if not root:
                     raise Exception(f"Failed to parse XML with multiple methods. Errors: {', '.join(errors)}")
@@ -346,4 +400,3 @@ if __name__ == "__main__":
     test_files = ["test.xml"]
     results = convert(test_files)
     print(f"Converted files: {results}")
-

@@ -1,10 +1,10 @@
 name=XML to JSON Converter
-version=1.2.0
+version=1.2.3
 description=Converts XML and PDI files to JSON format with configurable options for attributes, text handling, and array formatting. Preserves XML structure while providing clean JSON output.
 author=ErikRadoan
 entry_point=xml_to_json_converter.py
 created_date=2025-07-16
-last_updated=2024-07-28
+last_updated=2025-07-28
 supported_formats=xml,pdi
 output_format=json
 category=Data Conversion
