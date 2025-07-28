@@ -36,90 +36,53 @@ class XMLToJsonConverter:
             for i, char in enumerate(xml_decl):
                 print(f"  Position {i}: '{char}' (ASCII: {ord(char)})")
 
-        # First, handle the specific malformed XML declaration pattern we're seeing
-        if xml_content.startswith('<?xml version="1.0?>'):
-            if self.debug_mode:
-                print("CRITICAL ERROR DETECTED: XML declaration missing closing quote")
-                print(f"Before fix: '{xml_content[:30]}'")
-
-            # Fix this specific pattern directly
-            xml_content = xml_content.replace('<?xml version="1.0?>', '<?xml version="1.0"?>')
-
-            if self.debug_mode:
-                print(f"After fix: '{xml_content[:30]}'")
-                print("FIXED: Added missing quote to XML declaration")
-
-        # Check for other malformed XML declaration patterns
-        elif xml_content.startswith('<?xml'):
-            if self.debug_mode:
-                print("Analyzing XML declaration for errors...")
-
-            # Count quotes in the declaration
+        # CRITICAL FIX: Ensure the XML content is properly formed by extracting and
+        # reconstructing the XML declaration from scratch
+        if xml_content.startswith('<?xml'):
+            # Find where the XML declaration ends
             decl_end = xml_content.find('?>')
             if decl_end > 0:
+                # Extract the XML declaration
                 declaration = xml_content[:decl_end + 2]
-                quote_count = declaration.count('"')
+
+                # Extract version if present
+                version_match = re.search(r'version\s*=\s*"([^"]*)"', declaration)
+                version = version_match.group(1) if version_match else "1.0"
+
+                # Extract encoding if present
+                encoding_match = re.search(r'encoding\s*=\s*"([^"]*)"', declaration)
+                encoding = encoding_match.group(1) if encoding_match else "UTF-8"
+
+                # Rebuild a clean XML declaration
+                clean_declaration = f'<?xml version="{version}" encoding="{encoding}"?>'
+
                 if self.debug_mode:
-                    print(f"XML declaration: '{declaration}'")
-                    print(f"Quote count in declaration: {quote_count}")
+                    print(f"Original declaration: '{declaration}'")
+                    print(f"Cleaned declaration: '{clean_declaration}'")
 
-                # Odd number of quotes indicates a problem
-                if quote_count % 2 == 1:
+                # Replace the original declaration with the clean one
+                xml_content = clean_declaration + xml_content[decl_end + 2:]
+            else:
+                # Handle case where ?> is missing
+                if self.debug_mode:
+                    print("XML declaration is incomplete (missing ?>)")
+
+                # Find a reasonable place to end the declaration
+                possible_end = xml_content.find('<', 5)  # Find first tag after <?xml
+                if possible_end > 5:
+                    incomplete_decl = xml_content[:possible_end].strip()
                     if self.debug_mode:
-                        print("ERROR: Odd number of quotes in XML declaration!")
+                        print(f"Incomplete declaration: '{incomplete_decl}'")
 
-                    # Look for version="X without closing quote
-                    version_match = re.search(r'version\s*=\s*"([^"]*?)(\?>)', declaration)
-                    if version_match:
-                        if self.debug_mode:
-                            print(f"Found unclosed version attribute: {version_match.group(0)}")
-
-                        # Insert missing quote
-                        fixed_decl = declaration.replace(
-                            version_match.group(0),
-                            f'version="{version_match.group(1)}"{version_match.group(2)}'
-                        )
-
-                        if self.debug_mode:
-                            print(f"Fixed declaration: '{fixed_decl}'")
-
-                        xml_content = fixed_decl + xml_content[decl_end + 2:]
-
-        # Handle other malformed XML declarations with missing quotes using regex
-        xml_decl_pattern = r'<\?xml\s+version\s*=\s*"([^"?]*)(\?>)'
-        xml_decl_match = re.search(xml_decl_pattern, xml_content)
-        if xml_decl_match:
-            if self.debug_mode:
-                print(f"Found malformed XML declaration with regex: '{xml_decl_match.group(0)}'")
-                print(f"  - Version text: '{xml_decl_match.group(1)}'")
-                print(f"  - Closing tag: '{xml_decl_match.group(2)}'")
-
-            fixed_decl = f'<?xml version="{xml_decl_match.group(1)}"?>'
-            xml_content = xml_content.replace(xml_decl_match.group(0), fixed_decl)
-
-            if self.debug_mode:
-                print(f"Fixed to: '{fixed_decl}'")
-
-        # Force a correct XML declaration as a last resort
-        if not xml_content.startswith('<?xml version="'):
-            if self.debug_mode:
-                print("WARNING: Forcing standard XML declaration as existing one may be corrupted")
-                print(f"Current start: '{xml_content[:20]}'")
-
-            # If there's a partial XML declaration, remove it
-            if xml_content.startswith('<?xml'):
-                end_pos = xml_content.find('?>')
-                if end_pos > 0:
-                    if self.debug_mode:
-                        print(f"Removing malformed declaration: '{xml_content[:end_pos + 2]}'")
-                    xml_content = xml_content[end_pos + 2:]
-
-            # Add proper declaration
+                    # Replace with a standard declaration
+                    xml_content = '<?xml version="1.0" encoding="UTF-8"?>' + xml_content[possible_end:]
+        else:
+            # Add XML declaration if missing
             xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
             if self.debug_mode:
-                print(f"New XML start: '{xml_content[:50]}'")
+                print("Added XML declaration as it was missing")
 
-        # Fix unescaped quotes in attribute values - limit number of iterations to prevent infinite loops
+        # Continue with other preprocessing steps
         processed_content = xml_content
         iteration_count = 0
         max_iterations = 20  # Prevent infinite loops
@@ -144,7 +107,6 @@ class XMLToJsonConverter:
             iteration_count += 1
 
         # More aggressive fix for problematic files: replace all unescaped quotes in attributes
-        # This is a more drastic approach but may help with particularly problematic files
         processed_content = re.sub(r'="([^"]*)"', lambda m: f'="{m.group(1).replace("\"", "&quot;")}"',
                                    processed_content)
 
@@ -157,7 +119,7 @@ class XMLToJsonConverter:
                 print("Found unclosed CDATA section, fixing...")
             processed_content = processed_content.replace('<![CDATA[', '')
 
-        # Fix other special cases in PDI files
+            # Fix other special cases in PDI files
         processed_content = processed_content.replace('\\', '\\\\')  # Escape backslashes
 
         # Remove control characters that might cause XML parsing issues
@@ -174,6 +136,21 @@ class XMLToJsonConverter:
                 processed_content += f'</{tag_name}>'
                 if self.debug_mode:
                     print(f"Added missing closing tag for <{tag_name}>")
+
+        # Final validation - ensure XML declaration is correct
+        if processed_content.startswith('<?xml'):
+            if '<?xml version="' not in processed_content or not re.match(r'<\?xml version="[^"]*"\?>',
+                                                                          processed_content[:30]):
+                if self.debug_mode:
+                    print(f"WARNING: XML declaration still malformed: '{processed_content[:30]}'")
+                    print("Forcing standard XML declaration")
+                # Force a standard declaration
+                if '?>' in processed_content[:50]:
+                    end_idx = processed_content.find('?>')
+                    processed_content = '<?xml version="1.0" encoding="UTF-8"?>' + processed_content[end_idx + 2:]
+
+        if self.debug_mode:
+            print(f"Final XML declaration: '{processed_content[:50]}'")
 
         return processed_content
 
@@ -192,54 +169,71 @@ class XMLToJsonConverter:
             print(f"Converting file: {xml_file_path}")
 
         try:
-            # Try reading as text first
+            # Try reading as text first, with binary fallback
+            xml_content = None
+
+            # First try UTF-8
             try:
                 with open(xml_file_path, 'r', encoding='utf-8', errors='replace') as f:
                     xml_content = f.read()
-
-                # Check if it looks like XML
-                if not (xml_content.strip().startswith('<?xml') or xml_content.strip().startswith('<')):
-                    raise ValueError("File does not appear to be XML, trying binary mode")
-
-                # Add special debug for PDI files
-                if xml_file_path.lower().endswith('.pdi'):
-                    print("*** PDI FILE DETECTED: Enabling special processing mode ***")
-                    print(f"File size: {len(xml_content)} bytes")
-
-                    # Take a sample from the beginning of the file
-                    sample_size = min(500, len(xml_content))
-                    print(f"First {sample_size} characters:")
-                    for i in range(0, sample_size, 50):
-                        chunk = xml_content[i:i + 50].replace('\n', '\\n')
-                        print(f"  {i:04d}: {chunk}")
-
-                # Set a flag for PDI files to enable special handling
-                if xml_file_path.lower().endswith('.pdi'):
-                    self.debug_mode = f"{self.debug_mode}.pdi" if isinstance(self.debug_mode, str) else ".pdi"
-
-                # Preprocess XML content to fix common issues
-                processed_xml = self.preprocess_xml(xml_content)
-
+                    if self.debug_mode:
+                        print(f"Successfully read file with UTF-8 encoding")
             except UnicodeDecodeError:
-                # If it fails as text, try binary mode for PDI files
-                if self.debug_mode:
-                    print("UnicodeDecodeError: Trying binary mode")
+                pass
+
+            # If that fails, try other encodings
+            if not xml_content:
+                encodings = ['latin-1', 'cp1252', 'iso-8859-1']
+                for encoding in encodings:
+                    try:
+                        with open(xml_file_path, 'r', encoding=encoding, errors='replace') as f:
+                            xml_content = f.read()
+                            if self.debug_mode:
+                                print(f"Successfully read file with {encoding} encoding")
+                            break
+                    except UnicodeDecodeError:
+                        continue
+
+            # Last resort: read as binary and decode
+            if not xml_content:
                 try:
                     with open(xml_file_path, 'rb') as f:
                         binary_content = f.read()
-                    # Try to decode with different encodings
-                    for encoding in ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']:
-                        try:
-                            xml_content = binary_content.decode(encoding, errors='replace')
-                            if self.debug_mode:
-                                print(f"Successfully decoded with {encoding}")
-                            break
-                        except UnicodeDecodeError:
-                            continue
+                        # Try to detect encoding from XML declaration
+                        encoding = 'utf-8'  # Default
+                        if binary_content.startswith(b'<?xml'):
+                            encoding_match = re.search(b'encoding=["\']([^"\']+)["\']', binary_content[:200])
+                            if encoding_match:
+                                encoding = encoding_match.group(1).decode('ascii')
 
-                    processed_xml = self.preprocess_xml(xml_content)
+                        xml_content = binary_content.decode(encoding, errors='replace')
+                        if self.debug_mode:
+                            print(f"Read file in binary mode with {encoding} encoding")
                 except Exception as bin_err:
-                    raise Exception(f"Failed to read file in binary mode: {bin_err}")
+                    raise Exception(f"Failed to read file in any mode: {bin_err}")
+
+            # Check if it looks like XML
+            if not (xml_content.strip().startswith('<?xml') or xml_content.strip().startswith('<')):
+                raise ValueError("File does not appear to be XML")
+
+            # Add special debug for PDI files
+            if xml_file_path.lower().endswith('.pdi'):
+                print("*** PDI FILE DETECTED: Enabling special processing mode ***")
+                print(f"File size: {len(xml_content)} bytes")
+
+                # Take a sample from the beginning of the file
+                sample_size = min(500, len(xml_content))
+                print(f"First {sample_size} characters:")
+                for i in range(0, sample_size, 50):
+                    chunk = xml_content[i:i + 50].replace('\n', '\\n')
+                    print(f"  {i:04d}: {chunk}")
+
+            # PDI specific handling
+            if xml_file_path.lower().endswith('.pdi'):
+                self.debug_mode = True  # Force debug mode for PDI files
+
+            # Preprocess XML content to fix common issues
+            processed_xml = self.preprocess_xml(xml_content)
 
             # Try different parsing approaches with fallbacks
             json_data = None
@@ -251,7 +245,23 @@ class XMLToJsonConverter:
                     print("Trying xmltodict parsing...")
 
                 # Parse with xmltodict which is more tolerant of malformed XML
-                xml_dict = xmltodict.parse(processed_xml)
+                # Use force_list to handle array elements correctly
+                force_list = {}  # TODO: Detect array elements from data
+
+                # Add a more detailed error handler
+                def handle_xml_error(err):
+                    if self.debug_mode:
+                        print(f"XMLDict parse error: {err}")
+                    return True  # Continue parsing
+
+                xml_dict = xmltodict.parse(
+                    processed_xml,
+                    attr_prefix=self.attribute_prefix,
+                    cdata_key=self.text_key,
+                    force_list=force_list,
+                    process_namespaces=True,
+                    namespaces={},  # Collapse all namespaces
+                )
                 json_data = xml_dict
 
                 if self.debug_mode:
@@ -261,7 +271,7 @@ class XMLToJsonConverter:
                 if self.debug_mode:
                     print(f"xmltodict parsing failed: {str(xmltodict_err)}")
 
-                # Approach 2: Try ElementTree and other methods
+                # Try other parsing methods (ElementTree, lxml, etc.)
                 try:
                     # Try multiple parsing methods
                     root = None
