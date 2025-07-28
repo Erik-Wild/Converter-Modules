@@ -29,68 +29,39 @@ class XMLToJsonConverter:
             print(f"Preprocessing XML content of length {len(xml_content)}")
             print(f"First 100 characters: {xml_content[:100].replace(chr(10), '\\n')}")
 
-            # Detailed debug for XML declaration
-            xml_decl = xml_content.split('\n')[0] if '\n' in xml_content else xml_content[:50]
-            print(f"XML declaration: '{xml_decl}'")
-            print(f"Character by character analysis of XML declaration:")
-            for i, char in enumerate(xml_decl):
-                print(f"  Position {i}: '{char}' (ASCII: {ord(char)})")
-
-        # CRITICAL FIX: Ensure the XML content is properly formed by extracting and
-        # reconstructing the XML declaration from scratch
+        # FIXED: Simplified XML declaration handling
         if xml_content.startswith('<?xml'):
             # Find where the XML declaration ends
             decl_end = xml_content.find('?>')
             if decl_end > 0:
-                # Extract the XML declaration
-                declaration = xml_content[:decl_end+2]
+                # Extract everything after the XML declaration
+                remaining_content = xml_content[decl_end + 2:]
 
-                # Extract version if present
-                version_match = re.search(r'version\s*=\s*"([^"]*)"', declaration)
-                version = version_match.group(1) if version_match else "1.0"
-
-                # Extract encoding if present
-                encoding_match = re.search(r'encoding\s*=\s*"([^"]*)"', declaration)
-                encoding = encoding_match.group(1) if encoding_match else "UTF-8"
-
-                # Rebuild a clean XML declaration
-                clean_declaration = f'<?xml version="{version}" encoding="{encoding}"?>'
+                # Always use a standard, well-formed XML declaration
+                clean_declaration = '<?xml version="1.0" encoding="UTF-8"?>'
 
                 if self.debug_mode:
-                    print(f"Original declaration: '{declaration}'")
+                    original_declaration = xml_content[:decl_end + 2]
+                    print(f"Original declaration: '{original_declaration}'")
                     print(f"Cleaned declaration: '{clean_declaration}'")
 
-                # Replace the original declaration with the clean one
-                xml_content = clean_declaration + xml_content[decl_end+2:]
+                # Reconstruct with clean declaration
+                xml_content = clean_declaration + remaining_content
             else:
-                # Handle case where ?> is missing
-                if self.debug_mode:
-                    print("XML declaration is incomplete (missing ?>)")
-
-                # Find a reasonable place to end the declaration
+                # Handle case where ?> is missing - find the first tag after <?xml
                 possible_end = xml_content.find('<', 5)  # Find first tag after <?xml
                 if possible_end > 5:
-                    incomplete_decl = xml_content[:possible_end].strip()
                     if self.debug_mode:
-                        print(f"Incomplete declaration: '{incomplete_decl}'")
+                        incomplete_decl = xml_content[:possible_end].strip()
+                        print(f"Incomplete declaration found: '{incomplete_decl}'")
 
-                    # Replace with a standard declaration
+                    # Replace with standard declaration
                     xml_content = '<?xml version="1.0" encoding="UTF-8"?>' + xml_content[possible_end:]
+                else:
+                    # If we can't find a reasonable place, just prepend standard declaration
+                    xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content[5:]
         else:
             # Add XML declaration if missing
-            xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
-            if self.debug_mode:
-                print("Added XML declaration as it was missing")
-
-        # Always force a valid XML declaration at the start
-        lines = xml_content.split('\n')
-        if lines and lines[0].startswith('<?xml'):
-            # Replace the first line with a valid declaration
-            if self.debug_mode:
-                print(f"FORCING XML declaration: replacing '{lines[0]}' with standard declaration")
-            lines[0] = '<?xml version="1.0" encoding="UTF-8"?>'
-            xml_content = '\n'.join(lines)
-        elif not xml_content.strip().startswith('<?xml'):
             xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
             if self.debug_mode:
                 print("Added XML declaration as it was missing")
@@ -100,27 +71,27 @@ class XMLToJsonConverter:
         iteration_count = 0
         max_iterations = 20  # Prevent infinite loops
 
-        # First pass: simple attribute with unescaped quotes
-        pattern = r'=\s*"([^"]*)"([^"]*)"([^"]*)"'
-        while re.search(pattern, processed_content) and iteration_count < max_iterations:
+        # Fix unescaped quotes in attributes - IMPROVED REGEX
+        # This pattern looks for attribute="value"additional"content" patterns
+        quote_pattern = r'(\w+\s*=\s*"[^"]*)"([^"]*)"'
+        while re.search(quote_pattern, processed_content) and iteration_count < max_iterations:
             if self.debug_mode:
-                print("Found unescaped quotes in attributes, fixing...")
+                print(f"Iteration {iteration_count}: Found unescaped quotes in attributes, fixing...")
 
             def replace_quotes(match):
-                # Replace unescaped quotes with &quot;
-                content = match.group(1) + match.group(2) + match.group(3)
-                content = content.replace('"', '&quot;')
-                return f'="{content}"'
+                # Replace the internal quote with &quot;
+                attr_name_and_start = match.group(1)  # e.g., 'attribute="value'
+                middle_content = match.group(2)  # e.g., 'additional'
+                # Reconstruct as: attribute="value&quot;additional"
+                return f'{attr_name_and_start}&quot;{middle_content}"'
 
             old_content = processed_content
-            processed_content = re.sub(pattern, replace_quotes, processed_content)
-            # Check if we actually made changes
+            processed_content = re.sub(quote_pattern, replace_quotes, processed_content)
+
+            # Check if we actually made changes to prevent infinite loops
             if old_content == processed_content:
                 break
             iteration_count += 1
-
-        # More aggressive fix for problematic files: replace all unescaped quotes in attributes
-        processed_content = re.sub(r'="([^"]*)"', lambda m: f'="{m.group(1).replace("\"", "&quot;")}"', processed_content)
 
         # Fix standalone ampersands not part of entities
         processed_content = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)', '&amp;', processed_content)
@@ -131,37 +102,17 @@ class XMLToJsonConverter:
                 print("Found unclosed CDATA section, fixing...")
             processed_content = processed_content.replace('<![CDATA[', '')
 
-        # Fix other special cases in PDI files
-        processed_content = processed_content.replace('\\', '\\\\')  # Escape backslashes
-
         # Remove control characters that might cause XML parsing issues
         processed_content = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', processed_content)
 
-        # Handle malformed attributes (no quotes around values)
-        processed_content = re.sub(r'=([^\s">]+)(\s|>)', r'="\1"\2', processed_content)
-
-        # Fix missing closing tags - only for basic elements
-        for tag_match in re.finditer(r'<([a-zA-Z0-9_:-]+)([^>]*)>', processed_content):
-            tag_name = tag_match.group(1)
-            # Check if self-closing or has a closing tag
-            if not re.search(f'</{tag_name}>', processed_content) and not '/' in tag_match.group(2):
-                processed_content += f'</{tag_name}>'
-                if self.debug_mode:
-                    print(f"Added missing closing tag for <{tag_name}>")
-
-        # Final validation - ensure XML declaration is correct
-        if processed_content.startswith('<?xml'):
-            if '<?xml version="' not in processed_content or not re.match(r'<\?xml version="[^"]*"\?>', processed_content[:30]):
-                if self.debug_mode:
-                    print(f"WARNING: XML declaration still malformed: '{processed_content[:30]}'")
-                    print("Forcing standard XML declaration")
-                # Force a standard declaration
-                if '?>' in processed_content[:50]:
-                    end_idx = processed_content.find('?>')
-                    processed_content = '<?xml version="1.0" encoding="UTF-8"?>' + processed_content[end_idx+2:]
+        # Handle malformed attributes (values without quotes) - IMPROVED
+        # Only match attribute values that are clearly unquoted (not already within quotes)
+        processed_content = re.sub(r'(\w+\s*=\s*)([^\s">][^\s>]*?)(\s|>)', r'\1"\2"\3', processed_content)
 
         if self.debug_mode:
-            print(f"Final XML declaration: '{processed_content[:50]}'")
+            final_declaration = processed_content[:50].split('\n')[0] if '\n' in processed_content[
+                                                                                 :50] else processed_content[:50]
+            print(f"Final XML declaration: '{final_declaration}'")
 
         return processed_content
 
