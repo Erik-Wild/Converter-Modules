@@ -28,33 +28,46 @@ class XMLToJsonConverter:
         if self.debug_mode:
             print(f"Preprocessing XML content of length {len(xml_content)}")
 
-        # Fix malformed XML declaration - critical to handle first
-        xml_decl_pattern = r'<\?xml\s+version\s*=\s*"([^"]*)\??>'
-        if re.search(xml_decl_pattern, xml_content):
+        # Direct fix for the common malformed XML declaration we're seeing
+        if xml_content.startswith('<?xml version="1.0?>'):
             if self.debug_mode:
-                print("Found malformed XML declaration, fixing...")
+                print("Direct fix for malformed XML declaration")
+            xml_content = xml_content.replace('<?xml version="1.0?>', '<?xml version="1.0"?>')
 
-            # Fix missing closing quote in XML declaration
-            xml_content = re.sub(r'<\?xml\s+version\s*=\s*"([^"]*)\?>',
-                               r'<?xml version="\1"?>',
-                               xml_content)
+        # Handle other malformed XML declarations with missing quotes
+        xml_decl_match = re.match(r'<\?xml\s+version\s*=\s*"([^"?]*)(\?>)', xml_content)
+        if xml_decl_match:
+            if self.debug_mode:
+                print(f"Found malformed XML declaration: {xml_decl_match.group(0)}")
+            fixed_decl = f'<?xml version="{xml_decl_match.group(1)}"?>'
+            xml_content = xml_content.replace(xml_decl_match.group(0), fixed_decl)
+            if self.debug_mode:
+                print(f"Fixed to: {fixed_decl}")
 
-            # Fix other common XML declaration issues
-            xml_content = re.sub(r'<\?xml\s+version\s*=\s*"([^"]*)>',
-                               r'<?xml version="\1"?>',
-                               xml_content)
-
-        # Add proper XML declaration if missing
+        # If no XML declaration exists, add one
         if not xml_content.strip().startswith('<?xml'):
             xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
+            if self.debug_mode:
+                print("Added XML declaration")
 
-        # Fix unescaped quotes in attribute values
-        # This is a common issue in PDI files
+        # Handle PDI-specific issues
+        if ".pdi" in self.debug_mode:
+            # Some PDI files have completely broken XML - try to extract only valid XML parts
+            if "<LLDCPROD>" in xml_content:
+                if self.debug_mode:
+                    print("Found LLDCPROD tag, extracting only valid XML content")
+                start_idx = xml_content.find("<LLDCPROD>")
+                if start_idx > 0:
+                    xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content[start_idx:]
+
+        # Fix unescaped quotes in attribute values - limit number of iterations to prevent infinite loops
         processed_content = xml_content
+        iteration_count = 0
+        max_iterations = 20  # Prevent infinite loops
 
         # First pass: simple attribute with unescaped quotes
         pattern = r'=\s*"([^"]*)"([^"]*)"([^"]*)"'
-        while re.search(pattern, processed_content):
+        while re.search(pattern, processed_content) and iteration_count < max_iterations:
             if self.debug_mode:
                 print("Found unescaped quotes in attributes, fixing...")
 
@@ -64,14 +77,17 @@ class XMLToJsonConverter:
                 content = content.replace('"', '&quot;')
                 return f'="{content}"'
 
+            old_content = processed_content
             processed_content = re.sub(pattern, replace_quotes, processed_content)
+            # Check if we actually made changes
+            if old_content == processed_content:
+                break
+            iteration_count += 1
 
-        # More aggressive fixing for attributes that might span multiple lines
-        pattern = r'=\s*"([^>]*?)"([^>]*?)"([^>]*?)"'
-        while re.search(pattern, processed_content):
-            if self.debug_mode:
-                print("Found complex unescaped quotes, fixing...")
-            processed_content = re.sub(pattern, replace_quotes, processed_content)
+        # More aggressive fix for problematic files: replace all unescaped quotes in attributes
+        # This is a more drastic approach but may help with particularly problematic files
+        processed_content = re.sub(r'="([^"]*)"', lambda m: f'="{m.group(1).replace("\"", "&quot;")}"',
+                                   processed_content)
 
         # Fix standalone ampersands not part of entities
         processed_content = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)', '&amp;', processed_content)
@@ -82,15 +98,14 @@ class XMLToJsonConverter:
                 print("Found unclosed CDATA section, fixing...")
             processed_content = processed_content.replace('<![CDATA[', '')
 
-        # Fix other special cases in PDI files
+            # Fix other special cases in PDI files
         processed_content = processed_content.replace('\\', '\\\\')  # Escape backslashes
 
         # Remove control characters that might cause XML parsing issues
         processed_content = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', processed_content)
 
         # Handle malformed attributes (no quotes around values)
-        # Fix the syntax error in the regex replacement
-        processed_content = re.sub(r'=([^\s">]+)(\s|>)', r'"\1"\2', processed_content)
+        processed_content = re.sub(r'=([^\s">]+)(\s|>)', r'="\1"\2', processed_content)
 
         # Fix missing closing tags - only for basic elements
         for tag_match in re.finditer(r'<([a-zA-Z0-9_:-]+)([^>]*)>', processed_content):
@@ -127,6 +142,10 @@ class XMLToJsonConverter:
                 if not (xml_content.strip().startswith('<?xml') or xml_content.strip().startswith('<')):
                     raise ValueError("File does not appear to be XML, trying binary mode")
 
+                # Set a flag for PDI files to enable special handling
+                if xml_file_path.lower().endswith('.pdi'):
+                    self.debug_mode = f"{self.debug_mode}.pdi" if isinstance(self.debug_mode, str) else ".pdi"
+
                 # Preprocess XML content to fix common issues
                 processed_xml = self.preprocess_xml(xml_content)
 
@@ -151,122 +170,138 @@ class XMLToJsonConverter:
                 except Exception as bin_err:
                     raise Exception(f"Failed to read file in binary mode: {bin_err}")
 
-            # Try multiple parsing methods
-            root = None
-            errors = []
+            # Try different parsing approaches with fallbacks
+            json_data = None
 
-            # Method 1: Standard ElementTree
+            # Approach 1: Try direct xmltodict parsing first (most tolerant)
             try:
-                root = ET.fromstring(processed_xml)
+                import xmltodict
                 if self.debug_mode:
-                    print("Successfully parsed with standard ElementTree")
-            except ET.ParseError as e:
-                errors.append(f"Standard XML parsing failed: {e}")
+                    print("Trying xmltodict parsing...")
 
-                # Method 2: Try with lxml which is more lenient
+                # Parse with xmltodict which is more tolerant of malformed XML
+                xml_dict = xmltodict.parse(processed_xml)
+                json_data = xml_dict
+
+                if self.debug_mode:
+                    print("Successfully parsed with xmltodict")
+
+            except Exception as xmltodict_err:
+                if self.debug_mode:
+                    print(f"xmltodict parsing failed: {str(xmltodict_err)}")
+
+                # Approach 2: Try ElementTree and other methods
                 try:
-                    import lxml.etree as lxml_ET
-                    parser = lxml_ET.XMLParser(recover=True)
-                    root = lxml_ET.fromstring(processed_xml.encode('utf-8'), parser)
-                    if self.debug_mode:
-                        print("Successfully parsed XML using lxml with recovery mode")
-                    # Convert lxml Element to ElementTree Element
-                    root_str = lxml_ET.tostring(root, encoding='utf-8').decode('utf-8')
-                    root = ET.fromstring(root_str)
-                except ImportError:
-                    errors.append("lxml not available")
+                    # Try multiple parsing methods
+                    root = None
+                    errors = []
 
-                    # Method 3: Try with XMLBuilder
+                    # Method 1: Standard ElementTree
                     try:
-                        from xml.sax.saxutils import escape
-
-                        # Escape special characters in XML
-                        safe_xml = escape(processed_xml)
-
-                        # Try again with escaped content
-                        root = ET.fromstring(safe_xml)
+                        root = ET.fromstring(processed_xml)
                         if self.debug_mode:
-                            print("Successfully parsed with escaped XML")
-                    except Exception as builder_err:
-                        errors.append(f"XMLBuilder failed: {builder_err}")
+                            print("Successfully parsed with standard ElementTree")
+                    except ET.ParseError as e:
+                        errors.append(f"Standard XML parsing failed: {e}")
 
-                        # Method 4: Try reading directly with minidom
+                        # Method 2: Try with lxml which is more lenient
                         try:
-                            from xml.dom import minidom
-                            dom = minidom.parseString(processed_xml)
-                            # Convert DOM to ElementTree
-                            xml_str = dom.toxml()
-                            root = ET.fromstring(xml_str)
+                            import lxml.etree as lxml_ET
+                            parser = lxml_ET.XMLParser(recover=True)
+                            root = lxml_ET.fromstring(processed_xml.encode('utf-8'), parser)
                             if self.debug_mode:
-                                print("Successfully parsed with minidom")
-                        except Exception as dom_err:
-                            errors.append(f"minidom failed: {dom_err}")
-                except Exception as lxml_err:
-                    errors.append(f"lxml failed: {lxml_err}")
+                                print("Successfully parsed XML using lxml with recovery mode")
+                            # Convert lxml Element to ElementTree Element
+                            root_str = lxml_ET.tostring(root, encoding='utf-8').decode('utf-8')
+                            root = ET.fromstring(root_str)
+                        except ImportError:
+                            errors.append("lxml not available")
 
-            if not root:
-                # Last resort: try to fix the specific error by examining the error message
-                for error in errors:
-                    if "line" in error and "column" in error:
-                        # Extract line and column information
-                        line_match = re.search(r'line (\d+)', error)
-                        col_match = re.search(r'column (\d+)', error)
+                            # Method 3: Try with XMLBuilder
+                            try:
+                                from xml.sax.saxutils import escape
 
-                        if line_match and col_match:
-                            line_num = int(line_match.group(1))
-                            col_num = int(col_match.group(1))
+                                # Escape special characters in XML
+                                safe_xml = escape(processed_xml)
 
-                            # Get the problematic line
-                            lines = processed_xml.split('\n')
-                            if line_num <= len(lines):
-                                problem_line = lines[line_num - 1]
+                                # Try again with escaped content
+                                root = ET.fromstring(safe_xml)
                                 if self.debug_mode:
-                                    print(f"Problematic line ({line_num}): {problem_line}")
+                                    print("Successfully parsed with escaped XML")
+                            except Exception as builder_err:
+                                errors.append(f"XMLBuilder failed: {builder_err}")
 
-                                # Try to fix the specific character
-                                if col_num <= len(problem_line):
-                                    problem_char = problem_line[col_num - 1]
+                                # Method 4: Try reading directly with minidom
+                                try:
+                                    from xml.dom import minidom
+                                    dom = minidom.parseString(processed_xml)
+                                    # Convert DOM to ElementTree
+                                    xml_str = dom.toxml()
+                                    root = ET.fromstring(xml_str)
                                     if self.debug_mode:
-                                        print(f"Problematic character at column {col_num}: '{problem_char}'")
+                                        print("Successfully parsed with minidom")
+                                except Exception as dom_err:
+                                    errors.append(f"minidom failed: {dom_err}")
+                    except Exception as lxml_err:
+                        errors.append(f"lxml failed: {lxml_err}")
 
-                                    # Replace the problematic character
-                                    if '"' in problem_line and problem_line.count('"') % 2 == 1:
-                                        # Fix missing quotes
-                                        fixed_line = problem_line + '"'
-                                    else:
-                                        # Replace with space as fallback
-                                        fixed_line = problem_line[:col_num-1] + ' ' + problem_line[col_num:]
+                    if not root:
+                        # Last resort: try to fix the specific error by examining the error message
+                        for error in errors:
+                            if "line" in error and "column" in error:
+                                # Extract line and column information
+                                line_match = re.search(r'line (\d+)', error)
+                                col_match = re.search(r'column (\d+)', error)
 
-                                    lines[line_num - 1] = fixed_line
+                                if line_match and col_match:
+                                    line_num = int(line_match.group(1))
+                                    col_num = int(col_match.group(1))
 
-                                    fixed_xml = '\n'.join(lines)
-                                    try:
-                                        root = ET.fromstring(fixed_xml)
+                                    # Get the problematic line
+                                    lines = processed_xml.split('\n')
+                                    if line_num <= len(lines):
+                                        problem_line = lines[line_num - 1]
                                         if self.debug_mode:
-                                            print("Successfully parsed after fixing specific character!")
-                                    except Exception as fix_err:
-                                        errors.append(f"Character fixing failed: {fix_err}")
+                                            print(f"Problematic line ({line_num}): {problem_line}")
 
-                # If all else fails, try to convert using xmltodict as a last resort
-                if not root:
-                    try:
-                        import xmltodict
-                        # Parse XML into dict using xmltodict (more tolerant)
-                        xml_dict = xmltodict.parse(processed_xml)
+                                        # Try to fix the specific character
+                                        if col_num <= len(problem_line):
+                                            problem_char = problem_line[col_num - 1]
+                                            if self.debug_mode:
+                                                print(f"Problematic character at column {col_num}: '{problem_char}'")
 
-                        # Convert back to XML string and then to ElementTree
-                        xml_str = xmltodict.unparse(xml_dict)
-                        root = ET.fromstring(xml_str)
-                        if self.debug_mode:
-                            print("Successfully parsed using xmltodict workaround")
-                    except Exception as xmltodict_err:
-                        errors.append(f"xmltodict method failed: {xmltodict_err}")
+                                            # Replace the problematic character
+                                            if '"' in problem_line and problem_line.count('"') % 2 == 1:
+                                                # Fix missing quotes
+                                                fixed_line = problem_line + '"'
+                                            else:
+                                                # Replace with space as fallback
+                                                fixed_line = problem_line[:col_num - 1] + ' ' + problem_line[col_num:]
 
-                if not root:
-                    raise Exception(f"Failed to parse XML with multiple methods. Errors: {', '.join(errors)}")
+                                            lines[line_num - 1] = fixed_line
 
-            # Convert to dictionary
-            json_data = self.xml_to_dict(root)
+                                            fixed_xml = '\n'.join(lines)
+                                            try:
+                                                root = ET.fromstring(fixed_xml)
+                                                if self.debug_mode:
+                                                    print("Successfully parsed after fixing specific character!")
+                                            except Exception as fix_err:
+                                                errors.append(f"Character fixing failed: {fix_err}")
+
+                    if not root:
+                        raise Exception(f"Failed to parse XML with multiple methods. Errors: {', '.join(errors)}")
+
+                    # Convert to dictionary
+                    json_data = self.xml_to_dict(root)
+
+                except Exception as et_err:
+                    if self.debug_mode:
+                        print(f"ElementTree parsing failed: {str(et_err)}")
+                    raise Exception(f"All parsing methods failed. Last error: {str(xmltodict_err)}")
+
+            # Validate we have data
+            if not json_data:
+                raise Exception("Failed to extract any data from the XML file")
 
             # Determine output path
             if not output_path:
