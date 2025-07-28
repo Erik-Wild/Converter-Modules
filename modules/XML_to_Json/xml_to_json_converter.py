@@ -71,27 +71,47 @@ class XMLToJsonConverter:
         iteration_count = 0
         max_iterations = 20  # Prevent infinite loops
 
-        # Fix unescaped quotes in attributes - IMPROVED REGEX
-        # This pattern looks for attribute="value"additional"content" patterns
-        quote_pattern = r'(\w+\s*=\s*"[^"]*)"([^"]*)"'
-        while re.search(quote_pattern, processed_content) and iteration_count < max_iterations:
-            if self.debug_mode:
-                print(f"Iteration {iteration_count}: Found unescaped quotes in attributes, fixing...")
+        # MUCH SAFER: Only attempt quote fixing if we can detect actual malformed attributes
+        # Look for specific problematic patterns like: attr="value"extra" or attr="val"ue"
 
-            def replace_quotes(match):
-                # Replace the internal quote with &quot;
-                attr_name_and_start = match.group(1)  # e.g., 'attribute="value'
-                middle_content = match.group(2)  # e.g., 'additional'
-                # Reconstruct as: attribute="value&quot;additional"
-                return f'{attr_name_and_start}&quot;{middle_content}"'
+        # First, let's check if there are actually problematic quotes
+        # Pattern for detecting genuinely malformed attributes
+        malformed_patterns = [
+            r'\w+\s*=\s*"[^"]*"[^>\s][^"]*"',  # attr="value"extra"
+            r'\w+\s*=\s*"[^"]*""[^"]*"',  # attr="value""more"
+        ]
 
-            old_content = processed_content
-            processed_content = re.sub(quote_pattern, replace_quotes, processed_content)
-
-            # Check if we actually made changes to prevent infinite loops
-            if old_content == processed_content:
+        needs_quote_fixing = False
+        for pattern in malformed_patterns:
+            if re.search(pattern, processed_content):
+                needs_quote_fixing = True
+                if self.debug_mode:
+                    matches = re.findall(pattern, processed_content)
+                    print(f"Found malformed attribute pattern: {pattern}")
+                    print(f"Sample matches: {matches[:3]}")
                 break
-            iteration_count += 1
+
+        if needs_quote_fixing:
+            # Only do quote fixing if we actually found problems
+            quote_pattern = r'(\w+\s*=\s*"[^"]*")(")'
+            iteration_count = 0
+            max_iterations = 10  # Reduced iterations
+
+            while re.search(quote_pattern, processed_content) and iteration_count < max_iterations:
+                if self.debug_mode:
+                    print(f"Iteration {iteration_count}: Fixing quote issues...")
+
+                old_content = processed_content
+                processed_content = re.sub(quote_pattern, r'\1&quot;', processed_content,
+                                           count=5)  # Fix max 5 at a time
+
+                # Check if we actually made changes
+                if old_content == processed_content:
+                    break
+                iteration_count += 1
+        else:
+            if self.debug_mode:
+                print("No malformed quotes detected, skipping quote fixing")
 
         # Fix standalone ampersands not part of entities
         processed_content = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)', '&amp;', processed_content)
