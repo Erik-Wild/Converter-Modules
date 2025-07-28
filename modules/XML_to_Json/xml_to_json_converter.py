@@ -43,7 +43,7 @@ class XMLToJsonConverter:
             decl_end = xml_content.find('?>')
             if decl_end > 0:
                 # Extract the XML declaration
-                declaration = xml_content[:decl_end + 2]
+                declaration = xml_content[:decl_end+2]
 
                 # Extract version if present
                 version_match = re.search(r'version\s*=\s*"([^"]*)"', declaration)
@@ -61,7 +61,7 @@ class XMLToJsonConverter:
                     print(f"Cleaned declaration: '{clean_declaration}'")
 
                 # Replace the original declaration with the clean one
-                xml_content = clean_declaration + xml_content[decl_end + 2:]
+                xml_content = clean_declaration + xml_content[decl_end+2:]
             else:
                 # Handle case where ?> is missing
                 if self.debug_mode:
@@ -78,6 +78,19 @@ class XMLToJsonConverter:
                     xml_content = '<?xml version="1.0" encoding="UTF-8"?>' + xml_content[possible_end:]
         else:
             # Add XML declaration if missing
+            xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
+            if self.debug_mode:
+                print("Added XML declaration as it was missing")
+
+        # Always force a valid XML declaration at the start
+        lines = xml_content.split('\n')
+        if lines and lines[0].startswith('<?xml'):
+            # Replace the first line with a valid declaration
+            if self.debug_mode:
+                print(f"FORCING XML declaration: replacing '{lines[0]}' with standard declaration")
+            lines[0] = '<?xml version="1.0" encoding="UTF-8"?>'
+            xml_content = '\n'.join(lines)
+        elif not xml_content.strip().startswith('<?xml'):
             xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
             if self.debug_mode:
                 print("Added XML declaration as it was missing")
@@ -107,8 +120,7 @@ class XMLToJsonConverter:
             iteration_count += 1
 
         # More aggressive fix for problematic files: replace all unescaped quotes in attributes
-        processed_content = re.sub(r'="([^"]*)"', lambda m: f'="{m.group(1).replace("\"", "&quot;")}"',
-                                   processed_content)
+        processed_content = re.sub(r'="([^"]*)"', lambda m: f'="{m.group(1).replace("\"", "&quot;")}"', processed_content)
 
         # Fix standalone ampersands not part of entities
         processed_content = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)', '&amp;', processed_content)
@@ -119,7 +131,7 @@ class XMLToJsonConverter:
                 print("Found unclosed CDATA section, fixing...")
             processed_content = processed_content.replace('<![CDATA[', '')
 
-            # Fix other special cases in PDI files
+        # Fix other special cases in PDI files
         processed_content = processed_content.replace('\\', '\\\\')  # Escape backslashes
 
         # Remove control characters that might cause XML parsing issues
@@ -139,15 +151,14 @@ class XMLToJsonConverter:
 
         # Final validation - ensure XML declaration is correct
         if processed_content.startswith('<?xml'):
-            if '<?xml version="' not in processed_content or not re.match(r'<\?xml version="[^"]*"\?>',
-                                                                          processed_content[:30]):
+            if '<?xml version="' not in processed_content or not re.match(r'<\?xml version="[^"]*"\?>', processed_content[:30]):
                 if self.debug_mode:
                     print(f"WARNING: XML declaration still malformed: '{processed_content[:30]}'")
                     print("Forcing standard XML declaration")
                 # Force a standard declaration
                 if '?>' in processed_content[:50]:
                     end_idx = processed_content.find('?>')
-                    processed_content = '<?xml version="1.0" encoding="UTF-8"?>' + processed_content[end_idx + 2:]
+                    processed_content = '<?xml version="1.0" encoding="UTF-8"?>' + processed_content[end_idx+2:]
 
         if self.debug_mode:
             print(f"Final XML declaration: '{processed_content[:50]}'")
@@ -225,7 +236,7 @@ class XMLToJsonConverter:
                 sample_size = min(500, len(xml_content))
                 print(f"First {sample_size} characters:")
                 for i in range(0, sample_size, 50):
-                    chunk = xml_content[i:i + 50].replace('\n', '\\n')
+                    chunk = xml_content[i:i+50].replace('\n', '\\n')
                     print(f"  {i:04d}: {chunk}")
 
             # PDI specific handling
@@ -357,7 +368,7 @@ class XMLToJsonConverter:
                                                 fixed_line = problem_line + '"'
                                             else:
                                                 # Replace with space as fallback
-                                                fixed_line = problem_line[:col_num - 1] + ' ' + problem_line[col_num:]
+                                                fixed_line = problem_line[:col_num-1] + ' ' + problem_line[col_num:]
 
                                             lines[line_num - 1] = fixed_line
 
