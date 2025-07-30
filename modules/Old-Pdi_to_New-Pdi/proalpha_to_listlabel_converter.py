@@ -148,30 +148,39 @@ class JsonToListLabelConverter:
         content = re.sub(root_pattern, expected_root, content)
 
         # Fix namespace prefixes throughout the document
-        # Replace ns0: with xsd: and ns1: with xsd: etc.
+        # Replace ns0: with xsd: and ns1: with prodata: etc.
         content = re.sub(r'xmlns:ns\d+="http://www\.w3\.org/2001/XMLSchema"', '', content)
         content = re.sub(r'xmlns:ns\d+="urn:schemas-progress-com:xml-prodata:0001"', '', content)
         content = re.sub(r'<ns\d+:', '<xsd:', content)
         content = re.sub(r'</ns\d+:', '</xsd:', content)
         content = re.sub(r'<xs:', '<xsd:', content)
         content = re.sub(r'</xs:', '</xsd:', content)
-        content = re.sub(r'ns\d+:proDataSet', 'prodata:proDataSet', content)
 
-        # Fix the schema element to include proper namespace declarations
+        # Fix prodata namespace attributes - this is the key fix
+        content = re.sub(r'ns\d+:proDataSet', 'prodata:proDataSet', content)
+        content = re.sub(r'ns\d+:beforeTable', 'prodata:beforeTable', content)
+        content = re.sub(r'ns\d+:format', 'prodata:format', content)
+        content = re.sub(r'ns\d+:columnLabel', 'prodata:columnLabel', content)
+        content = re.sub(r'ns\d+:label', 'prodata:label', content)
+        content = re.sub(r'ns\d+:help', 'prodata:help', content)
+
+        # Fix the schema element to include proper namespace declarations including empty default namespace
         schema_pattern = r'<xsd:schema[^>]*>'
         expected_schema = ('  <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
                            'xmlns="" xmlns:prodata="urn:schemas-progress-com:xml-prodata:0001">')
         content = re.sub(schema_pattern, expected_schema, content)
 
         # Clean up any duplicate or malformed namespace declarations
-        content = re.sub(r'\s+xmlns:xsi="[^"]*"', '', content)  # Remove extra xsi declarations
-        content = re.sub(r'\s+xmlns="[^"]*"', '', content)  # Remove extra default namespace
+        # Remove extra namespace declarations that might have been added
+        content = re.sub(r'\s+xmlns:xsi="[^"]*"(?=.*xmlns:xsi)', '', content)  # Remove duplicate xsi
+        content = re.sub(r'\s+xmlns="[^"]*"(?=.*xmlns="")', '', content)  # Remove duplicate default ns
 
-        # Re-add the xsi namespace to root element if it was removed
-        if 'xmlns:xsi=' not in content:
-            content = re.sub(r'<dsBG_Form([^>]*)>',
-                             r'<dsBG_Form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\1>',
-                             content)
+        # Ensure proper spacing and formatting
+        # Fix self-closing tags to have space before />
+        content = re.sub(r'([^/\s])/>', r'\1 />', content)
+
+        # Fix spacing around attributes to match expected format
+        content = re.sub(r'"\s+([a-zA-Z])', r'" \1', content)
 
         return content
 
