@@ -1,10 +1,10 @@
 name=ProAlpha to List & Label Converter
-version=1.5.3
+version=1.5.4
 description=Converts proALPHA Internal templates in JSON format to List & Label (.pdi) format for list-based reports. Supports field mappings, text headers, and diverse data types, integrating with proALPHA's data provider services. Automatically locates the template file if not specified.
 author=ErikRadoan
 entry_point=proalpha_to_listlabel_converter.py
 created_date=2025-07-14
-last_updated=2024-06-14
+last_updated=2025-07-30
 supported_formats=pdi
 output_format=pdi
 category=Report Conversion

@@ -5,6 +5,7 @@ import logging
 import copy
 import shutil
 from typing import Dict, Any, List, Optional
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename='json_to_listlabel_conversion.log',
@@ -57,7 +58,11 @@ class JsonToListLabelConverter:
         self.template_path = template_path
         print(f"[DEBUG] Final template path: {self.template_path}")
 
-        # Load the template
+        # Store the original template content as text to preserve formatting
+        with open(template_path, 'r', encoding='utf-8') as f:
+            self.template_content = f.read()
+
+        # Load the template for manipulation
         try:
             self.template_tree = ET.parse(template_path)
             self.template_root = self.template_tree.getroot()
@@ -95,8 +100,8 @@ class JsonToListLabelConverter:
             # Apply data from JSON to the template
             self._apply_json_to_template(new_root, data)
 
-            # Write the modified template to the output file
-            new_tree.write(output_path, encoding='utf-8', xml_declaration=True)
+            # Write the modified template with preserved formatting
+            self._write_with_preserved_formatting(new_tree, output_path)
 
             logging.info(f"Successfully converted {json_file_path} to {output_path}")
             return output_path
@@ -107,6 +112,68 @@ class JsonToListLabelConverter:
         except Exception as e:
             logging.error(f"Error converting {json_file_path}: {str(e)}")
             raise Exception(f"Error converting JSON to List & Label: {str(e)}")
+
+    def _write_with_preserved_formatting(self, tree: ET.ElementTree, output_path: str) -> None:
+        """Write XML with preserved namespace prefixes and formatting"""
+        # First, let's write using ElementTree to get the structure
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False, encoding='utf-8') as tmp_file:
+            tree.write(tmp_file.name, encoding='utf-8', xml_declaration=True)
+            temp_path = tmp_file.name
+
+        # Read the generated content
+        with open(temp_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Clean up temp file
+        os.unlink(temp_path)
+
+        # Fix the namespace prefixes and formatting
+        content = self._fix_xml_formatting(content)
+
+        # Write the corrected content
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+    def _fix_xml_formatting(self, content: str) -> str:
+        """Fix XML formatting to match the expected output"""
+        # Fix XML declaration
+        content = re.sub(r'<\?xml version=\'([^\']+)\' encoding=\'([^\']+)\'\?>',
+                         r'<?xml version="\1"?>', content)
+
+        # Fix namespace declarations in root element
+        # Replace the generated root element with the correct one
+        root_pattern = r'<dsBG_Form[^>]*>'
+        expected_root = '<dsBG_Form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
+        content = re.sub(root_pattern, expected_root, content)
+
+        # Fix namespace prefixes throughout the document
+        # Replace ns0: with xsd: and ns1: with xsd: etc.
+        content = re.sub(r'xmlns:ns\d+="http://www\.w3\.org/2001/XMLSchema"', '', content)
+        content = re.sub(r'xmlns:ns\d+="urn:schemas-progress-com:xml-prodata:0001"', '', content)
+        content = re.sub(r'<ns\d+:', '<xsd:', content)
+        content = re.sub(r'</ns\d+:', '</xsd:', content)
+        content = re.sub(r'<xs:', '<xsd:', content)
+        content = re.sub(r'</xs:', '</xsd:', content)
+        content = re.sub(r'ns\d+:proDataSet', 'prodata:proDataSet', content)
+
+        # Fix the schema element to include proper namespace declarations
+        schema_pattern = r'<xsd:schema[^>]*>'
+        expected_schema = ('  <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
+                           'xmlns="" xmlns:prodata="urn:schemas-progress-com:xml-prodata:0001">')
+        content = re.sub(schema_pattern, expected_schema, content)
+
+        # Clean up any duplicate or malformed namespace declarations
+        content = re.sub(r'\s+xmlns:xsi="[^"]*"', '', content)  # Remove extra xsi declarations
+        content = re.sub(r'\s+xmlns="[^"]*"', '', content)  # Remove extra default namespace
+
+        # Re-add the xsi namespace to root element if it was removed
+        if 'xmlns:xsi=' not in content:
+            content = re.sub(r'<dsBG_Form([^>]*)>',
+                             r'<dsBG_Form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\1>',
+                             content)
+
+        return content
 
     def _apply_json_to_template(self, root: ET.Element, data: Dict[str, Any]) -> None:
         """Apply JSON data to the template"""
